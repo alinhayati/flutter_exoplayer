@@ -14,7 +14,6 @@ import android.app.NotificationManager;
 import android.app.PendingIntent;
 import android.content.Context;
 import android.content.Intent;
-import android.content.res.Resources;
 import android.graphics.Bitmap;
 import android.os.Build;
 import android.support.v4.media.session.MediaSessionCompat;
@@ -31,6 +30,8 @@ public class MediaNotificationManager {
     public static final String NEXT_ACTION = "com.daniel.exoPlayer.action.next";
     public static final String CUSTOM1_ACTION = "com.daniel.exoPlayer.action.custom1";
     public static final String CUSTOM2_ACTION = "com.daniel.exoPlayer.action.custom2";
+    public static final String FORWARD_ACTION = "com.daniel.exoPlayer.action.forward";
+    public static final String BACKWARD_ACTION = "com.daniel.exoPlayer.action.backward";
     private static final int NOTIFICATION_ID = 1;
     private static final String CHANNEL_ID = "Playback";
 
@@ -48,6 +49,8 @@ public class MediaNotificationManager {
     private Intent notificationIntent;
     private Intent customIntent1;
     private Intent customIntent2;
+    private Intent forwardIntent;
+    private Intent backwardIntent;
 
     private PendingIntent ppPlayIntent;
     private PendingIntent pPauseIntent;
@@ -56,6 +59,8 @@ public class MediaNotificationManager {
     private PendingIntent pNotificatioIntent;
     private PendingIntent pCustomIntent1;
     private PendingIntent pCustomIntent2;
+    private PendingIntent pForwardIntent;
+    private PendingIntent pBackwardIntent;
 
     private AudioObject audioObject;
     private boolean isPlaying;
@@ -116,6 +121,14 @@ public class MediaNotificationManager {
         customIntent2 = new Intent(this.context, ForegroundAudioPlayer.class);
         customIntent2.setAction(CUSTOM2_ACTION);
         pCustomIntent2 = PendingIntent.getService(this.context, 1, customIntent2, 0);
+
+        forwardIntent = new Intent(this.context, ForegroundAudioPlayer.class);
+        forwardIntent.setAction(FORWARD_ACTION);
+        pForwardIntent = PendingIntent.getService(this.context, 1, forwardIntent, 0);
+
+        backwardIntent = new Intent(this.context, ForegroundAudioPlayer.class);
+        backwardIntent.setAction(BACKWARD_ACTION);
+        pBackwardIntent = PendingIntent.getService(this.context, 1, backwardIntent, 0);
 
     }
 
@@ -209,7 +222,13 @@ public class MediaNotificationManager {
             builder.addAction(customIcon1, "Custom1", pCustomIntent1);
         }
         if (audioObject.getNotificationActionMode() == NotificationDefaultActions.PREVIOUS || audioObject.getNotificationActionMode() == NotificationDefaultActions.ALL) {
-            builder.addAction(R.drawable.ic_previous, "Previous", pPrevIntent);
+            //builder.addAction(R.drawable.ic_previous, "Previous", pPrevIntent);
+        }
+
+        if (audioObject.getNotificationActionMode() == NotificationDefaultActions.FORWARD ||
+                audioObject.getNotificationActionMode() == NotificationDefaultActions.BACKWARD ||
+                audioObject.getNotificationActionMode() == NotificationDefaultActions.ALL) {
+            builder.addAction(R.drawable.exo_icon_rewind, "Backward", pBackwardIntent);
         }
 
         if (this.isPlaying) {
@@ -218,18 +237,27 @@ public class MediaNotificationManager {
             builder.addAction(R.drawable.ic_play, "Play", ppPlayIntent);
         }
 
+        if (audioObject.getNotificationActionMode() == NotificationDefaultActions.FORWARD ||
+                audioObject.getNotificationActionMode() == NotificationDefaultActions.BACKWARD ||
+                audioObject.getNotificationActionMode() == NotificationDefaultActions.ALL) {
+            builder.addAction(R.drawable.exo_icon_fastforward, "Forward", pForwardIntent);
+        }
+
         if (audioObject.getNotificationActionMode() == NotificationDefaultActions.NEXT || audioObject.getNotificationActionMode() == NotificationDefaultActions.ALL) {
-            builder.addAction(R.drawable.ic_next, "Next", pNextIntent);
+            //builder.addAction(R.drawable.ic_next, "Next", pNextIntent);
         }
         if(audioObject.getNotificationCustomActions() == NotificationCustomActions.TWO){
             builder.addAction(customIcon2, "Custom2", pCustomIntent2);
         }
+
         return builder;
     }
 
     private NotificationCompat.Builder initNotificationStyle(NotificationCompat.Builder builder) {
         if (audioObject.getNotificationActionMode() == NotificationDefaultActions.NEXT
-                || audioObject.getNotificationActionMode() == NotificationDefaultActions.PREVIOUS) {
+                || audioObject.getNotificationActionMode() == NotificationDefaultActions.PREVIOUS
+                || audioObject.getNotificationActionMode() == NotificationDefaultActions.FORWARD
+                || audioObject.getNotificationActionMode() == NotificationDefaultActions.BACKWARD) {
             builder.setStyle(new androidx.media.app.NotificationCompat.DecoratedMediaCustomViewStyle()
                     .setShowActionsInCompactView(0, 1)
                     .setMediaSession(mediaSession.getSessionToken()));
