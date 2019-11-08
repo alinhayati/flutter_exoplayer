@@ -6,6 +6,7 @@ import danielr2001.audioplayer.AudioPlayerPlugin;
 import danielr2001.audioplayer.models.AudioObject;
 import danielr2001.audioplayer.enums.PlayerState;
 import danielr2001.audioplayer.enums.PlayerMode;
+import okhttp3.OkHttpClient;
 
 
 import android.app.Activity;
@@ -24,6 +25,7 @@ import com.google.android.exoplayer2.SimpleExoPlayer;
 import com.google.android.exoplayer2.Timeline;
 import com.google.android.exoplayer2.audio.AudioAttributes;
 import com.google.android.exoplayer2.analytics.AnalyticsListener;
+import com.google.android.exoplayer2.ext.okhttp.OkHttpDataSourceFactory;
 import com.google.android.exoplayer2.source.ConcatenatingMediaSource;
 import com.google.android.exoplayer2.source.MediaSource;
 import com.google.android.exoplayer2.source.ProgressiveMediaSource;
@@ -76,7 +78,7 @@ public class BackgroundAudioPlayer implements AudioPlayer {
     @Override
     public void initExoPlayer(int index) {
         player = ExoPlayerFactory.newSimpleInstance(this.context, new DefaultTrackSelector());
-        DefaultDataSourceFactory dataSourceFactory = new DefaultDataSourceFactory(this.context, Util.getUserAgent(this.context, "exoPlayerLibrary"));
+        DefaultDataSourceFactory dataSourceFactory= new DefaultDataSourceFactory(this.context,new OkHttpDataSourceFactory(new OkHttpClient(),Util.getUserAgent(this.context, "exoPlayerLibrary")));
         // playlist/single audio load
         if(playerMode == PlayerMode.PLAYLIST){
             ConcatenatingMediaSource concatenatingMediaSource = new ConcatenatingMediaSource();
