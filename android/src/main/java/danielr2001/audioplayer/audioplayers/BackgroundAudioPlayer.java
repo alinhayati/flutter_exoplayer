@@ -25,16 +25,26 @@ import com.google.android.exoplayer2.SimpleExoPlayer;
 import com.google.android.exoplayer2.Timeline;
 import com.google.android.exoplayer2.audio.AudioAttributes;
 import com.google.android.exoplayer2.analytics.AnalyticsListener;
+import com.google.android.exoplayer2.ext.okhttp.OkHttpDataSource;
 import com.google.android.exoplayer2.ext.okhttp.OkHttpDataSourceFactory;
+import com.google.android.exoplayer2.extractor.DefaultExtractorsFactory;
 import com.google.android.exoplayer2.source.ConcatenatingMediaSource;
 import com.google.android.exoplayer2.source.MediaSource;
 import com.google.android.exoplayer2.source.ProgressiveMediaSource;
 import com.google.android.exoplayer2.source.TrackGroupArray;
 import com.google.android.exoplayer2.trackselection.TrackSelectionArray;
 import com.google.android.exoplayer2.trackselection.DefaultTrackSelector;
+import com.google.android.exoplayer2.upstream.DataSource;
+import com.google.android.exoplayer2.upstream.DefaultDataSource;
 import com.google.android.exoplayer2.upstream.DefaultDataSourceFactory;
+import com.google.android.exoplayer2.upstream.cache.Cache;
+import com.google.android.exoplayer2.upstream.cache.CacheDataSource;
+import com.google.android.exoplayer2.upstream.cache.CacheDataSourceFactory;
+import com.google.android.exoplayer2.upstream.cache.LeastRecentlyUsedCacheEvictor;
+import com.google.android.exoplayer2.upstream.cache.SimpleCache;
 import com.google.android.exoplayer2.util.Util;
 
+import java.io.File;
 import java.util.ArrayList;
 
 public class BackgroundAudioPlayer implements AudioPlayer {
@@ -78,7 +88,11 @@ public class BackgroundAudioPlayer implements AudioPlayer {
     @Override
     public void initExoPlayer(int index) {
         player = ExoPlayerFactory.newSimpleInstance(this.context, new DefaultTrackSelector());
-        DefaultDataSourceFactory dataSourceFactory= new DefaultDataSourceFactory(this.context,new OkHttpDataSourceFactory(new OkHttpClient(),Util.getUserAgent(this.context, "exoPlayerLibrary")));
+//        DefaultDataSourceFactory dataSourceFactory= new DefaultDataSourceFactory(this.context,new OkHttpDataSourceFactory(new OkHttpClient(),Util.getUserAgent(this.context, "exoPlayerLibrary")));
+        DataSource.Factory httpDataSourceFactory=new OkHttpDataSourceFactory(new OkHttpClient(),Util.getUserAgent(this.context, "exoPlayerLibrary"));
+        Cache cache = new SimpleCache(new File(this.context.getCacheDir().getAbsolutePath() + "/exoplayer"), new LeastRecentlyUsedCacheEvictor(1024 * 1024 * 100)); // 100 Mb max
+
+        DataSource.Factory dataSourceFactory= new CacheDataSourceFactory(cache, httpDataSourceFactory, CacheDataSource.FLAG_BLOCK_ON_CACHE | CacheDataSource.FLAG_IGNORE_CACHE_ON_ERROR);
         // playlist/single audio load
         if(playerMode == PlayerMode.PLAYLIST){
             ConcatenatingMediaSource concatenatingMediaSource = new ConcatenatingMediaSource();
@@ -91,7 +105,12 @@ public class BackgroundAudioPlayer implements AudioPlayer {
                 player.seekTo(index,0);
             }
         }else{
-            MediaSource mediaSource = new ProgressiveMediaSource.Factory(dataSourceFactory).createMediaSource(Uri.parse(audioObject.getUrl()));
+//            MediaSource mediaSource = new ProgressiveMediaSource.Factory(dataSourceFactory).createMediaSource(Uri.parse(audioObject.getUrl()));
+            MediaSource mediaSource = new ProgressiveMediaSource.Factory(dataSourceFactory,new DefaultExtractorsFactory()).createMediaSource(Uri.parse(audioObject.getUrl()));
+
+
+//            DefaultDataSource defaultDataSource=new DefaultDataSource(this.context,new OkHttpDataSource(new OkHttpClient(),""));
+//            MediaSource mediaSource = new ProgressiveMediaSource.Factory(dataSourceFactory).;
             player.prepare(mediaSource);
         }
         //handle audio focus
