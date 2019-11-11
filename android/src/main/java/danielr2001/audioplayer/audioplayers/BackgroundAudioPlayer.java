@@ -1,42 +1,25 @@
 package danielr2001.audioplayer.audioplayers;
 
-import danielr2001.audioplayer.interfaces.AudioPlayer;
-import danielr2001.audioplayer.notifications.MediaNotificationManager;
-import danielr2001.audioplayer.AudioPlayerPlugin;
-import danielr2001.audioplayer.models.AudioObject;
-import danielr2001.audioplayer.enums.PlayerState;
-import danielr2001.audioplayer.enums.PlayerMode;
-import okhttp3.OkHttpClient;
-
-
 import android.app.Activity;
-import android.content.Intent;
 import android.content.Context;
 import android.net.Uri;
-import android.os.Binder;
-import android.os.IBinder;
-
-import androidx.annotation.Nullable;
 
 import com.google.android.exoplayer2.C;
 import com.google.android.exoplayer2.ExoPlayerFactory;
 import com.google.android.exoplayer2.Player;
 import com.google.android.exoplayer2.SimpleExoPlayer;
-import com.google.android.exoplayer2.Timeline;
-import com.google.android.exoplayer2.audio.AudioAttributes;
 import com.google.android.exoplayer2.analytics.AnalyticsListener;
-import com.google.android.exoplayer2.ext.okhttp.OkHttpDataSource;
+import com.google.android.exoplayer2.audio.AudioAttributes;
+import com.google.android.exoplayer2.database.ExoDatabaseProvider;
 import com.google.android.exoplayer2.ext.okhttp.OkHttpDataSourceFactory;
 import com.google.android.exoplayer2.extractor.DefaultExtractorsFactory;
 import com.google.android.exoplayer2.source.ConcatenatingMediaSource;
 import com.google.android.exoplayer2.source.MediaSource;
 import com.google.android.exoplayer2.source.ProgressiveMediaSource;
 import com.google.android.exoplayer2.source.TrackGroupArray;
-import com.google.android.exoplayer2.trackselection.TrackSelectionArray;
 import com.google.android.exoplayer2.trackselection.DefaultTrackSelector;
+import com.google.android.exoplayer2.trackselection.TrackSelectionArray;
 import com.google.android.exoplayer2.upstream.DataSource;
-import com.google.android.exoplayer2.upstream.DefaultDataSource;
-import com.google.android.exoplayer2.upstream.DefaultDataSourceFactory;
 import com.google.android.exoplayer2.upstream.cache.Cache;
 import com.google.android.exoplayer2.upstream.cache.CacheDataSource;
 import com.google.android.exoplayer2.upstream.cache.CacheDataSourceFactory;
@@ -46,6 +29,13 @@ import com.google.android.exoplayer2.util.Util;
 
 import java.io.File;
 import java.util.ArrayList;
+
+import danielr2001.audioplayer.AudioPlayerPlugin;
+import danielr2001.audioplayer.enums.PlayerMode;
+import danielr2001.audioplayer.enums.PlayerState;
+import danielr2001.audioplayer.interfaces.AudioPlayer;
+import danielr2001.audioplayer.models.AudioObject;
+import okhttp3.OkHttpClient;
 
 public class BackgroundAudioPlayer implements AudioPlayer {
 
@@ -74,9 +64,9 @@ public class BackgroundAudioPlayer implements AudioPlayer {
     private ArrayList<AudioObject> audioObjects;
     private AudioObject audioObject;
 
-    
+
     @Override
-    public void initAudioPlayer (AudioPlayerPlugin ref, Activity activity, String playerId) {
+    public void initAudioPlayer(AudioPlayerPlugin ref, Activity activity, String playerId) {
         this.initialized = true;
 
         this.ref = ref;
@@ -88,33 +78,26 @@ public class BackgroundAudioPlayer implements AudioPlayer {
     @Override
     public void initExoPlayer(int index) {
         player = ExoPlayerFactory.newSimpleInstance(this.context, new DefaultTrackSelector());
-//        DefaultDataSourceFactory dataSourceFactory= new DefaultDataSourceFactory(this.context,new OkHttpDataSourceFactory(new OkHttpClient(),Util.getUserAgent(this.context, "exoPlayerLibrary")));
-        DataSource.Factory httpDataSourceFactory=new OkHttpDataSourceFactory(new OkHttpClient(),Util.getUserAgent(this.context, "exoPlayerLibrary"));
-        Cache cache = new SimpleCache(new File(this.context.getCacheDir().getAbsolutePath() + "/exoplayer"), new LeastRecentlyUsedCacheEvictor(1024 * 1024 * 100)); // 100 Mb max
-
-        DataSource.Factory dataSourceFactory= new CacheDataSourceFactory(cache, httpDataSourceFactory, CacheDataSource.FLAG_BLOCK_ON_CACHE | CacheDataSource.FLAG_IGNORE_CACHE_ON_ERROR);
+        DataSource.Factory dataSourceFactory = buildDataSourceFactory();
         // playlist/single audio load
-        if(playerMode == PlayerMode.PLAYLIST){
+        if (playerMode == PlayerMode.PLAYLIST) {
             ConcatenatingMediaSource concatenatingMediaSource = new ConcatenatingMediaSource();
             for (AudioObject audioObject : audioObjects) {
-                MediaSource mediaSource = new ProgressiveMediaSource.Factory(dataSourceFactory).createMediaSource(Uri.parse(audioObject.getUrl()));
+                MediaSource mediaSource =
+                        new ProgressiveMediaSource.Factory(dataSourceFactory).createMediaSource(Uri.parse(audioObject.getUrl()));
                 concatenatingMediaSource.addMediaSource(mediaSource);
             }
             player.prepare(concatenatingMediaSource);
-            if(index != 0) {
-                player.seekTo(index,0);
+            if (index != 0) {
+                player.seekTo(index, 0);
             }
-        }else{
-//            MediaSource mediaSource = new ProgressiveMediaSource.Factory(dataSourceFactory).createMediaSource(Uri.parse(audioObject.getUrl()));
-            MediaSource mediaSource = new ProgressiveMediaSource.Factory(dataSourceFactory,new DefaultExtractorsFactory()).createMediaSource(Uri.parse(audioObject.getUrl()));
-
-
-//            DefaultDataSource defaultDataSource=new DefaultDataSource(this.context,new OkHttpDataSource(new OkHttpClient(),""));
-//            MediaSource mediaSource = new ProgressiveMediaSource.Factory(dataSourceFactory).;
+        } else {
+            MediaSource mediaSource = new ProgressiveMediaSource.Factory(dataSourceFactory,
+                    new DefaultExtractorsFactory()).createMediaSource(Uri.parse(audioObject.getUrl()));
             player.prepare(mediaSource);
         }
         //handle audio focus
-        if(this.respectAudioFocus){
+        if (this.respectAudioFocus) {
             AudioAttributes audioAttributes = new AudioAttributes.Builder()
                     .setUsage(C.USAGE_MEDIA)
                     .setContentType(C.CONTENT_TYPE_MUSIC)
@@ -127,11 +110,22 @@ public class BackgroundAudioPlayer implements AudioPlayer {
         }
     }
 
+    private DataSource.Factory buildDataSourceFactory() {
+        final long DEFAULT_MEDIA_CACHE_SIZE = 200 * 1024 * 1024L;
+        DataSource.Factory httpDataSourceFactory = new OkHttpDataSourceFactory(new OkHttpClient()
+                , Util.getUserAgent(this.context, "exoPlayerLibrary"));
+        Cache cache = new SimpleCache(new File(this.context.getCacheDir().getAbsolutePath() +
+                "media"), new LeastRecentlyUsedCacheEvictor(DEFAULT_MEDIA_CACHE_SIZE),
+                new ExoDatabaseProvider(this.context));
+        return new CacheDataSourceFactory(cache, httpDataSourceFactory,
+                CacheDataSource.FLAG_BLOCK_ON_CACHE | CacheDataSource.FLAG_IGNORE_CACHE_ON_ERROR);
+    }
+
     @Override
     public void play(AudioObject audioObject) {
-        if(this.completed || this.stopped){
+        if (this.completed || this.stopped) {
             this.resume();
-        }else{
+        } else {
             this.released = false;
 
             this.audioObject = audioObject;
@@ -143,11 +137,11 @@ public class BackgroundAudioPlayer implements AudioPlayer {
 
     @Override
     public void playAll(ArrayList<AudioObject> audioObjects, int index) {
-        if(this.completed || this.stopped){
+        if (this.completed || this.stopped) {
             this.resume();
-        }else{
+        } else {
             this.released = false;
-            
+
             this.audioObjects = audioObjects;
             this.initExoPlayer(index);
             initEventListeners();
@@ -181,10 +175,10 @@ public class BackgroundAudioPlayer implements AudioPlayer {
     @Override
     public void resume() {
         if (!this.released && !this.playing) {
-            if(!this.stopped){
+            if (!this.stopped) {
                 this.completed = false;
                 player.setPlayWhenReady(true);
-            }else{
+            } else {
                 this.stopped = false;
                 this.initExoPlayer(0);
                 initEventListeners();
@@ -238,17 +232,17 @@ public class BackgroundAudioPlayer implements AudioPlayer {
     }
 
     @Override
-    public boolean isBackground(){
+    public boolean isBackground() {
         return true;
     }
 
     @Override
-    public boolean isPlayerInitialized(){
+    public boolean isPlayerInitialized() {
         return this.initialized;
     }
 
     @Override
-    public boolean isPlayerReleased(){
+    public boolean isPlayerReleased() {
         return this.released;
     }
 
@@ -281,20 +275,13 @@ public class BackgroundAudioPlayer implements AudioPlayer {
     }
 
     @Override
-    public int getCurrentPlayingAudioIndex(){
+    public int getCurrentPlayingAudioIndex() {
         return player.getCurrentWindowIndex();
     }
 
     @Override
     public float getVolume() {
         return player.getVolume();
-    }
-
-    @Override
-    public void setPlayerAttributes(boolean repeatMode, boolean respectAudioFocus, PlayerMode playerMode) {
-        this.repeatMode = repeatMode;
-        this.respectAudioFocus = respectAudioFocus;
-        this.playerMode = playerMode;
     }
 
     @Override
@@ -306,19 +293,27 @@ public class BackgroundAudioPlayer implements AudioPlayer {
     }
 
     @Override
-    public void setRepeatMode(boolean repeatMode){
-        if(!this.released && this.repeatMode != repeatMode){
+    public void setPlayerAttributes(boolean repeatMode, boolean respectAudioFocus,
+                                    PlayerMode playerMode) {
+        this.repeatMode = repeatMode;
+        this.respectAudioFocus = respectAudioFocus;
+        this.playerMode = playerMode;
+    }
+
+    @Override
+    public void setRepeatMode(boolean repeatMode) {
+        if (!this.released && this.repeatMode != repeatMode) {
             this.repeatMode = repeatMode;
-            if(this.repeatMode){
+            if (this.repeatMode) {
                 player.setRepeatMode(player.REPEAT_MODE_ALL);
-            }else{
+            } else {
                 player.setRepeatMode(player.REPEAT_MODE_OFF);
             }
         }
     }
 
     private void initEventListeners() {
-        player.addAnalyticsListener(new AnalyticsListener(){
+        player.addAnalyticsListener(new AnalyticsListener() {
             @Override
             public void onAudioSessionId(EventTime eventTime, int audioSessionId) {
                 ref.handleAudioSessionIdChange(backgroundAudioPlayer, audioSessionId);
@@ -327,7 +322,8 @@ public class BackgroundAudioPlayer implements AudioPlayer {
         player.addListener(new Player.EventListener() {
 
             @Override
-            public void onTracksChanged(TrackGroupArray trackGroups, TrackSelectionArray trackSelections) {
+            public void onTracksChanged(TrackGroupArray trackGroups,
+                                        TrackSelectionArray trackSelections) {
                 ref.handlePlayerIndex(backgroundAudioPlayer);
             }
 
@@ -341,17 +337,17 @@ public class BackgroundAudioPlayer implements AudioPlayer {
                         break;
                     }
                     case Player.STATE_READY: {
-                        if(completed) {
+                        if (completed) {
                             buffering = false;
                             ref.handleStateChange(backgroundAudioPlayer, PlayerState.COMPLETED);
                         } else if (buffering) {
                             // playing
                             buffering = false;
-                            if(playWhenReady){
-                            playing = true;
+                            if (playWhenReady) {
+                                playing = true;
                                 ref.handlePositionUpdates();
                                 ref.handleStateChange(backgroundAudioPlayer, PlayerState.PLAYING);
-                            }else{
+                            } else {
                                 ref.handleStateChange(backgroundAudioPlayer, PlayerState.PAUSED);
                             }
                         } else if (playWhenReady) {
@@ -359,7 +355,7 @@ public class BackgroundAudioPlayer implements AudioPlayer {
                             playing = true;
                             ref.handlePositionUpdates();
                             ref.handleStateChange(backgroundAudioPlayer, PlayerState.PLAYING);
-                        } else if (!playWhenReady){
+                        } else if (!playWhenReady) {
                             // paused
                             playing = false;
                             ref.handleStateChange(backgroundAudioPlayer, PlayerState.PAUSED);
@@ -382,7 +378,7 @@ public class BackgroundAudioPlayer implements AudioPlayer {
                         buffering = false;
                         ref.handleStateChange(backgroundAudioPlayer, PlayerState.STOPPED);
                         break;
-                    } 
+                    }
                     // handle of released is in release method!
                 }
             }
