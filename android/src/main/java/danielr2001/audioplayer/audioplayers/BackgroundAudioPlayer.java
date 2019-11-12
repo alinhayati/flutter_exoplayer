@@ -19,6 +19,7 @@ import com.google.android.exoplayer2.source.MediaSource;
 import com.google.android.exoplayer2.source.ProgressiveMediaSource;
 import com.google.android.exoplayer2.source.TrackGroupArray;
 import com.google.android.exoplayer2.trackselection.DefaultTrackSelector;
+import com.google.android.exoplayer2.trackselection.MappingTrackSelector;
 import com.google.android.exoplayer2.trackselection.TrackSelectionArray;
 import com.google.android.exoplayer2.upstream.DataSource;
 import com.google.android.exoplayer2.upstream.cache.Cache;
@@ -26,6 +27,7 @@ import com.google.android.exoplayer2.upstream.cache.CacheDataSource;
 import com.google.android.exoplayer2.upstream.cache.CacheDataSourceFactory;
 import com.google.android.exoplayer2.upstream.cache.LeastRecentlyUsedCacheEvictor;
 import com.google.android.exoplayer2.upstream.cache.SimpleCache;
+import com.google.android.exoplayer2.util.EventLogger;
 import com.google.android.exoplayer2.util.Util;
 
 import java.io.File;
@@ -82,8 +84,9 @@ public class BackgroundAudioPlayer implements AudioPlayer {
                 new DefaultLoadControl.Builder().setBufferDurationsMs(3600000, 7200000,
                         DefaultLoadControl.DEFAULT_BUFFER_FOR_PLAYBACK_MS,
                         DefaultLoadControl.DEFAULT_BUFFER_FOR_PLAYBACK_AFTER_REBUFFER_MS).createDefaultLoadControl();
-        player = ExoPlayerFactory.newSimpleInstance(this.context, new DefaultTrackSelector(),
-                loadControl);
+        MappingTrackSelector trackSelector = new DefaultTrackSelector();
+        player = ExoPlayerFactory.newSimpleInstance(this.context, trackSelector, loadControl);
+        player.addAnalyticsListener(new EventLogger(trackSelector));
         DataSource.Factory dataSourceFactory = buildDataSourceFactory();
         // playlist/single audio load
         if (playerMode == PlayerMode.PLAYLIST) {
