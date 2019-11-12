@@ -5,6 +5,7 @@ import android.content.Context;
 import android.net.Uri;
 
 import com.google.android.exoplayer2.C;
+import com.google.android.exoplayer2.DefaultLoadControl;
 import com.google.android.exoplayer2.ExoPlayerFactory;
 import com.google.android.exoplayer2.Player;
 import com.google.android.exoplayer2.SimpleExoPlayer;
@@ -77,7 +78,12 @@ public class BackgroundAudioPlayer implements AudioPlayer {
 
     @Override
     public void initExoPlayer(int index) {
-        player = ExoPlayerFactory.newSimpleInstance(this.context, new DefaultTrackSelector());
+        DefaultLoadControl loadControl =
+                new DefaultLoadControl.Builder().setBufferDurationsMs(3600000, 7200000,
+                        DefaultLoadControl.DEFAULT_BUFFER_FOR_PLAYBACK_MS,
+                        DefaultLoadControl.DEFAULT_BUFFER_FOR_PLAYBACK_AFTER_REBUFFER_MS).createDefaultLoadControl();
+        player = ExoPlayerFactory.newSimpleInstance(this.context, new DefaultTrackSelector(),
+                loadControl);
         DataSource.Factory dataSourceFactory = buildDataSourceFactory();
         // playlist/single audio load
         if (playerMode == PlayerMode.PLAYLIST) {
