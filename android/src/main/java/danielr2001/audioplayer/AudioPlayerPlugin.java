@@ -99,6 +99,7 @@ public class AudioPlayerPlugin implements MethodCallHandler {
   public void onMethodCall(final MethodCall call, final MethodChannel.Result response) {
     try {
       handleMethodCall(call, response);
+      LOGGER.log(Level.ALL,"Ali: onMethodCall");
     } catch (Exception e) {
       dispose();
       LOGGER.log(Level.SEVERE, "Unexpected error!", e);
