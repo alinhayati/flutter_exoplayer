@@ -82,6 +82,7 @@ public class ForegroundAudioPlayer extends Service implements AudioPlayer {
     private SimpleExoPlayer player;
     private ArrayList<AudioObject> audioObjects;
     private AudioObject audioObject;
+    private Cache cache;
 
     @Nullable
     @Override
@@ -211,9 +212,10 @@ public class ForegroundAudioPlayer extends Service implements AudioPlayer {
         final long DEFAULT_MEDIA_CACHE_SIZE = 200 * 1024 * 1024L;
         DataSource.Factory httpDataSourceFactory = new OkHttpDataSourceFactory(new OkHttpClient()
                 , Util.getUserAgent(this.context, "exoPlayerLibrary"));
-        Cache cache = new SimpleCache(new File(this.context.getCacheDir().getAbsolutePath() +
-                "media"), new LeastRecentlyUsedCacheEvictor(DEFAULT_MEDIA_CACHE_SIZE),
-                new ExoDatabaseProvider(this.context));
+        if (cache == null)
+            cache = new SimpleCache(new File(this.context.getCacheDir().getAbsolutePath() +
+                    "media"), new LeastRecentlyUsedCacheEvictor(DEFAULT_MEDIA_CACHE_SIZE),
+                    new ExoDatabaseProvider(this.context));
         return new CacheDataSourceFactory(cache, httpDataSourceFactory,
                 CacheDataSource.FLAG_BLOCK_ON_CACHE | CacheDataSource.FLAG_IGNORE_CACHE_ON_ERROR);
     }
@@ -746,7 +748,8 @@ public class ForegroundAudioPlayer extends Service implements AudioPlayer {
 
             @Override
             public void onRenderedFirstFrame(EventTime eventTime, @Nullable Surface surface) {
-                Log.d("BackgroundAudioPlayer", "onRenderedFirstFrame:\neventTime=" + eventTime.currentPlaybackPositionMs);
+                Log.d("BackgroundAudioPlayer",
+                        "onRenderedFirstFrame:\neventTime=" + eventTime.currentPlaybackPositionMs);
             }
         });
     }
