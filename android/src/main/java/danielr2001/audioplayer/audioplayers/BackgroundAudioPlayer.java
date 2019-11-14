@@ -96,7 +96,7 @@ public class BackgroundAudioPlayer implements AudioPlayer {
     @Override
     public void initExoPlayer(int index) {
         DefaultLoadControl loadControl =
-                new DefaultLoadControl.Builder().setBufferDurationsMs(3600000, 7200000,
+                new DefaultLoadControl.Builder().setBufferDurationsMs(900000, 1800000,
                         DefaultLoadControl.DEFAULT_BUFFER_FOR_PLAYBACK_MS,
                         DefaultLoadControl.DEFAULT_BUFFER_FOR_PLAYBACK_AFTER_REBUFFER_MS).createDefaultLoadControl();
         DefaultTrackSelector trackSelector = new DefaultTrackSelector(new AdaptiveTrackSelection.Factory(new DefaultBandwidthMeter.Builder(this.context).build()));
