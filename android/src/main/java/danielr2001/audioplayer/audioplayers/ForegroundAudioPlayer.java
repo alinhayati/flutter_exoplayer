@@ -171,7 +171,7 @@ public class ForegroundAudioPlayer extends Service implements AudioPlayer {
     @Override
     public void initExoPlayer(int index) {
         DefaultLoadControl loadControl =
-                new DefaultLoadControl.Builder().setBufferDurationsMs(900000, 1800000,
+                new DefaultLoadControl.Builder().setBufferDurationsMs(3600000, 7200000,
                         DefaultLoadControl.DEFAULT_BUFFER_FOR_PLAYBACK_MS,
                         DefaultLoadControl.DEFAULT_BUFFER_FOR_PLAYBACK_AFTER_REBUFFER_MS).createDefaultLoadControl();
         DefaultTrackSelector trackSelector =
@@ -315,7 +315,7 @@ public class ForegroundAudioPlayer extends Service implements AudioPlayer {
             player.release();
             player = null;
             cache.release();
-            cache=null;
+            cache = null;
             ref.handleStateChange(this, PlayerState.RELEASED);
             stopSelf();
         }
@@ -422,13 +422,7 @@ public class ForegroundAudioPlayer extends Service implements AudioPlayer {
     }
 
     private void initEventListeners() {
-        aliAddCustomListeners();
-//        player.addAnalyticsListener(new AnalyticsListener() {
-//            @Override
-//            public void onAudioSessionId(EventTime eventTime, int audioSessionId) {
-//                ref.handleAudioSessionIdChange(backgroundAudioPlayer, audioSessionId);
-//            }
-//        });
+        addCustomListeners();
         player.addListener(new Player.EventListener() {
 
             @Override
@@ -519,7 +513,7 @@ public class ForegroundAudioPlayer extends Service implements AudioPlayer {
         });
     }
 
-    private void aliAddCustomListeners() {
+    private void addCustomListeners() {
         player.addAnalyticsListener(new AnalyticsListener() {
             @Override
             public void onPlayerStateChanged(EventTime eventTime, boolean playWhenReady,
@@ -761,19 +755,4 @@ public class ForegroundAudioPlayer extends Service implements AudioPlayer {
             return ForegroundAudioPlayer.this;
         }
     }
-
-    //// private MediaSessionCompat.Callback mediaSessionCallback = new
-    //// MediaSessionCompat.Callback() {
-    //// @Override
-    //// public void onPlay() {
-    //// Log.d("hii","play!");
-    //// super.onPlay();
-    //// }
-
-    //// @Override
-    //// public void onPause() {
-    //// Log.d("hii","pause!");
-    //// super.onPause();
-    //// }
-    //// };
 }
