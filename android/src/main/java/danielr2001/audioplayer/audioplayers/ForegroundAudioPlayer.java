@@ -314,6 +314,8 @@ public class ForegroundAudioPlayer extends Service implements AudioPlayer {
             this.audioObjects = null;
             player.release();
             player = null;
+            cache.release();
+            cache=null;
             ref.handleStateChange(this, PlayerState.RELEASED);
             stopSelf();
         }
