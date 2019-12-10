@@ -15,6 +15,7 @@ import android.os.IBinder;
 import android.support.v4.media.session.MediaSessionCompat;
 import android.util.Log;
 import android.view.Surface;
+import android.webkit.URLUtil;
 
 import androidx.annotation.Nullable;
 import androidx.core.app.NotificationCompat;
@@ -43,6 +44,7 @@ import com.google.android.exoplayer2.trackselection.DefaultTrackSelector;
 import com.google.android.exoplayer2.trackselection.TrackSelectionArray;
 import com.google.android.exoplayer2.upstream.DataSource;
 import com.google.android.exoplayer2.upstream.DefaultBandwidthMeter;
+import com.google.android.exoplayer2.upstream.DefaultDataSourceFactory;
 import com.google.android.exoplayer2.upstream.cache.Cache;
 import com.google.android.exoplayer2.upstream.cache.CacheDataSource;
 import com.google.android.exoplayer2.upstream.cache.CacheDataSourceFactory;
@@ -211,11 +213,11 @@ public class ForegroundAudioPlayer extends Service implements AudioPlayer {
         DefaultTrackSelector trackSelector =
                 new DefaultTrackSelector(new AdaptiveTrackSelection.Factory(new DefaultBandwidthMeter.Builder(this.context).build()));
         player = ExoPlayerFactory.newSimpleInstance(this.context, trackSelector, loadControl);
-        DataSource.Factory dataSourceFactory = buildDataSourceFactory();
         player.setForegroundMode(true);
         // playlist/single audio load
         if (this.playerMode == PlayerMode.PLAYLIST) {
             ConcatenatingMediaSource concatenatingMediaSource = new ConcatenatingMediaSource();
+            DataSource.Factory dataSourceFactory = buildDataSourceFactory();
             for (AudioObject audioObject : audioObjects) {
                 MediaSource mediaSource = new ProgressiveMediaSource.Factory(dataSourceFactory)
                         .createMediaSource(Uri.parse(audioObject.getUrl()));
@@ -226,6 +228,13 @@ public class ForegroundAudioPlayer extends Service implements AudioPlayer {
                 player.seekTo(index, 0);
             }
         } else {
+            String url = this.audioObject.getUrl();
+            DataSource.Factory dataSourceFactory;
+            if (URLUtil.isHttpsUrl(url) || URLUtil.isHttpUrl(url)) {
+                dataSourceFactory = buildDataSourceFactory();
+            } else {
+                dataSourceFactory = new DefaultDataSourceFactory(this, Util.getUserAgent(this.context, "exoPlayerLibrary"));
+            }
             MediaSource mediaSource = new ProgressiveMediaSource.Factory(dataSourceFactory)
                     .createMediaSource(Uri.parse(this.audioObject.getUrl()));
             player.prepare(mediaSource);
