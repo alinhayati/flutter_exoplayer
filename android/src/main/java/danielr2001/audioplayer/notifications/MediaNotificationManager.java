@@ -31,8 +31,8 @@ public class MediaNotificationManager {
     public static final String NEXT_ACTION = "com.daniel.exoPlayer.action.next";
     public static final String CUSTOM1_ACTION = "com.daniel.exoPlayer.action.custom1";
     public static final String CUSTOM2_ACTION = "com.daniel.exoPlayer.action.custom2";
-    private static final int NOTIFICATION_ID = 1;
-    private static final String CHANNEL_ID = "Playback";
+    public static final int NOTIFICATION_ID = 1;
+    public static final String CHANNEL_ID = "Playback";
 
     private ForegroundAudioPlayer foregroundExoPlayer;
     private Context context;
