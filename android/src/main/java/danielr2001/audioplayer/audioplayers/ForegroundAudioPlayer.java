@@ -229,13 +229,10 @@ public class ForegroundAudioPlayer extends Service implements AudioPlayer {
             }
         } else {
             String url = this.audioObject.getUrl();
-            Log.d("ExoPlayerPlugin", "URL :" + url);
             DataSource.Factory dataSourceFactory;
             if (URLUtil.isHttpsUrl(url) || URLUtil.isHttpUrl(url)) {
                 dataSourceFactory = buildDataSourceFactory();
-                Log.d("ExoPlayerPlugin", "Online");
             } else {
-                Log.d("ExoPlayerPlugin", "Default");
                 dataSourceFactory = new DefaultDataSourceFactory(this, Util.getUserAgent(this.context, "exoPlayerLibrary"));
             }
             MediaSource mediaSource = new ProgressiveMediaSource.Factory(dataSourceFactory)
