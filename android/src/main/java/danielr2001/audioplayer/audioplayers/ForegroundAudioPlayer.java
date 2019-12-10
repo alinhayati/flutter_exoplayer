@@ -1,17 +1,23 @@
 package danielr2001.audioplayer.audioplayers;
 
 import android.app.Activity;
+import android.app.Notification;
+import android.app.NotificationChannel;
+import android.app.NotificationManager;
+import android.app.PendingIntent;
 import android.app.Service;
 import android.content.Context;
 import android.content.Intent;
 import android.net.Uri;
 import android.os.Binder;
+import android.os.Build;
 import android.os.IBinder;
 import android.support.v4.media.session.MediaSessionCompat;
 import android.util.Log;
 import android.view.Surface;
 
 import androidx.annotation.Nullable;
+import androidx.core.app.NotificationCompat;
 
 import com.google.android.exoplayer2.C;
 import com.google.android.exoplayer2.DefaultLoadControl;
@@ -93,6 +99,7 @@ public class ForegroundAudioPlayer extends Service implements AudioPlayer {
     @Override
     public int onStartCommand(Intent intent, int flags, int startId) {
         this.context = getApplicationContext();
+        createTempNotificationWhileInitializingPlayer();
         mediaSession = new MediaSessionCompat(this.context, "playback");
         // ! TODO handle MediaButtonReceiver's callbacks
         // MediaButtonReceiver.handleIntent(mediaSession, intent);
@@ -155,6 +162,33 @@ public class ForegroundAudioPlayer extends Service implements AudioPlayer {
     public void onTaskRemoved(Intent rootIntent) {
         super.onTaskRemoved(rootIntent);
         this.release();
+    }
+
+    private void createTempNotificationWhileInitializingPlayer() {
+        createNotificationChannel();
+        Intent notificationIntent = new Intent(this, this.getClass());
+        PendingIntent pendingIntent = PendingIntent.getActivity(this,
+                0, notificationIntent, 0);
+
+        Notification notification = new NotificationCompat.Builder(this, MediaNotificationManager.CHANNEL_ID)
+                .setContentTitle("Initializing Audio Player")
+                .setContentIntent(pendingIntent)
+                .build();
+
+        startForeground(MediaNotificationManager.NOTIFICATION_ID, notification);
+    }
+
+    private void createNotificationChannel() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            NotificationChannel serviceChannel = new NotificationChannel(
+                    MediaNotificationManager.CHANNEL_ID,
+                    "Playback",
+                    NotificationManager.IMPORTANCE_DEFAULT
+            );
+
+            NotificationManager manager = getSystemService(NotificationManager.class);
+            manager.createNotificationChannel(serviceChannel);
+        }
     }
 
     @Override
