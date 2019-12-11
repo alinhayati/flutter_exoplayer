@@ -86,11 +86,13 @@ public class AudioPlayerPlugin implements MethodCallHandler {
 
   public static void registerWith(final Registrar registrar) {
     final MethodChannel channel = new MethodChannel(registrar.messenger(), "danielr2001/audioplayer");
-    channel.setMethodCallHandler(new AudioPlayerPlugin(channel, registrar.activity()));
+    final AudioPlayerPlugin plugin = new AudioPlayerPlugin(channel, registrar.activity());
+    channel.setMethodCallHandler(plugin);
     registrar.addViewDestroyListener(new PluginRegistry.ViewDestroyListener() {
       @Override
       public boolean onViewDestroy(FlutterNativeView flutterNativeView) {
-       registrar.activity().stopService(new Intent(registrar.activity(), ForegroundAudioPlayer.class));
+        registrar.activity().unbindService(plugin.connection);
+        registrar.activity().stopService(new Intent(registrar.activity(), ForegroundAudioPlayer.class));
         return false;
       }
     });
