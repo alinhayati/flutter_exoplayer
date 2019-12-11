@@ -91,8 +91,10 @@ public class AudioPlayerPlugin implements MethodCallHandler {
     registrar.addViewDestroyListener(new PluginRegistry.ViewDestroyListener() {
       @Override
       public boolean onViewDestroy(FlutterNativeView flutterNativeView) {
-        registrar.activity().unbindService(plugin.connection);
-        registrar.activity().stopService(new Intent(registrar.activity(), ForegroundAudioPlayer.class));
+        if(plugin.isMyServiceRunning(ForegroundAudioPlayer.class)) {
+          registrar.activity().unbindService(plugin.connection);
+          registrar.activity().stopService(new Intent(registrar.activity(), ForegroundAudioPlayer.class));
+        }
         return false;
       }
     });
