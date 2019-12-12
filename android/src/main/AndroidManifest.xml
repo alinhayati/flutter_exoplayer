@@ -9,9 +9,6 @@
         </intent-filter> -->
     </service>
 
-    <service android:name=".services.ClosingService"
-        android:stopWithTask="false"/>
-
     <!-- <receiver android:name="androidx.media.session.MediaButtonReceiver" >
       <intent-filter>
         <action android:name="android.intent.action.MEDIA_BUTTON" />
