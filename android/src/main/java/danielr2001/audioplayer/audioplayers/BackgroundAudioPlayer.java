@@ -5,11 +5,11 @@ import android.content.Context;
 import android.net.Uri;
 import android.util.Log;
 import android.view.Surface;
+import android.webkit.URLUtil;
 
 import androidx.annotation.Nullable;
 
 import com.google.android.exoplayer2.C;
-import com.google.android.exoplayer2.DefaultLoadControl;
 import com.google.android.exoplayer2.ExoPlaybackException;
 import com.google.android.exoplayer2.ExoPlayerFactory;
 import com.google.android.exoplayer2.Format;
@@ -18,29 +18,19 @@ import com.google.android.exoplayer2.Player;
 import com.google.android.exoplayer2.SimpleExoPlayer;
 import com.google.android.exoplayer2.analytics.AnalyticsListener;
 import com.google.android.exoplayer2.audio.AudioAttributes;
-import com.google.android.exoplayer2.database.ExoDatabaseProvider;
 import com.google.android.exoplayer2.decoder.DecoderCounters;
-import com.google.android.exoplayer2.ext.okhttp.OkHttpDataSourceFactory;
-import com.google.android.exoplayer2.extractor.DefaultExtractorsFactory;
 import com.google.android.exoplayer2.metadata.Metadata;
 import com.google.android.exoplayer2.source.ConcatenatingMediaSource;
 import com.google.android.exoplayer2.source.MediaSource;
 import com.google.android.exoplayer2.source.MediaSourceEventListener;
 import com.google.android.exoplayer2.source.ProgressiveMediaSource;
 import com.google.android.exoplayer2.source.TrackGroupArray;
-import com.google.android.exoplayer2.trackselection.AdaptiveTrackSelection;
 import com.google.android.exoplayer2.trackselection.DefaultTrackSelector;
 import com.google.android.exoplayer2.trackselection.TrackSelectionArray;
 import com.google.android.exoplayer2.upstream.DataSource;
-import com.google.android.exoplayer2.upstream.DefaultBandwidthMeter;
-import com.google.android.exoplayer2.upstream.cache.Cache;
-import com.google.android.exoplayer2.upstream.cache.CacheDataSource;
-import com.google.android.exoplayer2.upstream.cache.CacheDataSourceFactory;
-import com.google.android.exoplayer2.upstream.cache.LeastRecentlyUsedCacheEvictor;
-import com.google.android.exoplayer2.upstream.cache.SimpleCache;
+import com.google.android.exoplayer2.upstream.DefaultDataSourceFactory;
 import com.google.android.exoplayer2.util.Util;
 
-import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
 
@@ -49,7 +39,6 @@ import danielr2001.audioplayer.enums.PlayerMode;
 import danielr2001.audioplayer.enums.PlayerState;
 import danielr2001.audioplayer.interfaces.AudioPlayer;
 import danielr2001.audioplayer.models.AudioObject;
-import okhttp3.OkHttpClient;
 
 public class BackgroundAudioPlayer implements AudioPlayer {
 
@@ -77,7 +66,6 @@ public class BackgroundAudioPlayer implements AudioPlayer {
 
     private ArrayList<AudioObject> audioObjects;
     private AudioObject audioObject;
-    private Cache cache;
 
 
     @Override
@@ -92,20 +80,22 @@ public class BackgroundAudioPlayer implements AudioPlayer {
 
     @Override
     public void initExoPlayer(int index) {
-        DefaultLoadControl loadControl =
-                new DefaultLoadControl.Builder().setBufferDurationsMs(3600000, 7200000,
-                        DefaultLoadControl.DEFAULT_BUFFER_FOR_PLAYBACK_MS,
-                        DefaultLoadControl.DEFAULT_BUFFER_FOR_PLAYBACK_AFTER_REBUFFER_MS).createDefaultLoadControl();
         DefaultTrackSelector trackSelector =
-                new DefaultTrackSelector(new AdaptiveTrackSelection.Factory(new DefaultBandwidthMeter.Builder(this.context).build()));
-        player = ExoPlayerFactory.newSimpleInstance(this.context, trackSelector, loadControl);
-        DataSource.Factory dataSourceFactory = buildDataSourceFactory();
+                new DefaultTrackSelector();
+        player = ExoPlayerFactory.newSimpleInstance(this.context, trackSelector, new InsightLoadControl());
         // playlist/single audio load
         if (playerMode == PlayerMode.PLAYLIST) {
             ConcatenatingMediaSource concatenatingMediaSource = new ConcatenatingMediaSource();
             for (AudioObject audioObject : audioObjects) {
-                MediaSource mediaSource =
-                        new ProgressiveMediaSource.Factory(dataSourceFactory).createMediaSource(Uri.parse(audioObject.getUrl()));
+                String url = audioObject.getUrl();
+                DataSource.Factory dataSourceFactory;
+                if (URLUtil.isHttpsUrl(url) || URLUtil.isHttpUrl(url)) {
+                    dataSourceFactory = new InsightCacheDataSourceFactory(this.context);
+                } else {
+                    dataSourceFactory = new DefaultDataSourceFactory(this.context, Util.getUserAgent(this.context, "exoPlayerLibrary"));
+                }
+                MediaSource mediaSource = new ProgressiveMediaSource.Factory(dataSourceFactory)
+                        .createMediaSource(Uri.parse(url));
                 concatenatingMediaSource.addMediaSource(mediaSource);
             }
             player.prepare(concatenatingMediaSource);
@@ -113,9 +103,16 @@ public class BackgroundAudioPlayer implements AudioPlayer {
                 player.seekTo(index, 0);
             }
         } else {
-            MediaSource mediaSource = new ProgressiveMediaSource.Factory(dataSourceFactory,
-                    new DefaultExtractorsFactory()).createMediaSource(Uri.parse(audioObject.getUrl()));
-            player.prepare(mediaSource);
+            String url = this.audioObject.getUrl();
+            DataSource.Factory dataSourceFactory;
+            if (URLUtil.isHttpsUrl(url) || URLUtil.isHttpUrl(url)) {
+                dataSourceFactory = new InsightCacheDataSourceFactory(this.context);
+            } else {
+                dataSourceFactory = new DefaultDataSourceFactory(this.context, Util.getUserAgent(this.context, "exoPlayerLibrary"));
+            }
+            MediaSource mediaSource = new ProgressiveMediaSource.Factory(dataSourceFactory)
+                    .createMediaSource(Uri.parse(url));
+            player.prepare(mediaSource, true, false);
         }
         //handle audio focus
         if (this.respectAudioFocus) {
@@ -129,18 +126,6 @@ public class BackgroundAudioPlayer implements AudioPlayer {
         if (repeatMode) {
             player.setRepeatMode(player.REPEAT_MODE_ALL);
         }
-    }
-
-    private DataSource.Factory buildDataSourceFactory() {
-        final long DEFAULT_MEDIA_CACHE_SIZE = 200 * 1024 * 1024L;
-        DataSource.Factory httpDataSourceFactory = new OkHttpDataSourceFactory(new OkHttpClient()
-                , Util.getUserAgent(this.context, "exoPlayerLibrary"));
-        if (cache == null)
-            cache = new SimpleCache(new File(this.context.getCacheDir().getAbsolutePath() +
-                    "media"), new LeastRecentlyUsedCacheEvictor(DEFAULT_MEDIA_CACHE_SIZE),
-                    new ExoDatabaseProvider(this.context));
-        return new CacheDataSourceFactory(cache, httpDataSourceFactory,
-                CacheDataSource.FLAG_BLOCK_ON_CACHE | CacheDataSource.FLAG_IGNORE_CACHE_ON_ERROR);
     }
 
     @Override
@@ -229,8 +214,6 @@ public class BackgroundAudioPlayer implements AudioPlayer {
             this.audioObject = null;
             this.audioObjects = null;
             player.release();
-            cache.release();
-            cache = null;
             player = null;
             ref.handleStateChange(this, PlayerState.RELEASED);
         }
