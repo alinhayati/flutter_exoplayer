@@ -21,6 +21,7 @@ import androidx.annotation.Nullable;
 import androidx.core.app.NotificationCompat;
 
 import com.google.android.exoplayer2.C;
+import com.google.android.exoplayer2.DefaultLoadControl;
 import com.google.android.exoplayer2.ExoPlaybackException;
 import com.google.android.exoplayer2.ExoPlayerFactory;
 import com.google.android.exoplayer2.Format;
@@ -39,6 +40,7 @@ import com.google.android.exoplayer2.source.TrackGroupArray;
 import com.google.android.exoplayer2.trackselection.DefaultTrackSelector;
 import com.google.android.exoplayer2.trackselection.TrackSelectionArray;
 import com.google.android.exoplayer2.upstream.DataSource;
+import com.google.android.exoplayer2.upstream.DefaultAllocator;
 import com.google.android.exoplayer2.upstream.DefaultDataSourceFactory;
 import com.google.android.exoplayer2.util.Util;
 
@@ -55,6 +57,34 @@ import danielr2001.audioplayer.models.AudioObject;
 import danielr2001.audioplayer.notifications.MediaNotificationManager;
 
 public class ForegroundAudioPlayer extends Service implements AudioPlayer {
+
+    /**
+     * The default minimum duration of media that the player will attempt to ensure is buffered at all
+     * times, in milliseconds.
+     */
+    private static final int DEFAULT_MIN_BUFFER_MS = 15000;
+
+    /**
+     * The default maximum duration of media that the player will attempt to buffer, in milliseconds.
+     * <p>
+     * We want to let exoplayer to burst buffering initially instead of keeping a long-live connection and buffer gradually
+     * 2 HOURS
+     */
+    private static final int DEFAULT_MAX_BUFFER_MS = 2 * 60 * 60 * 1000;
+
+    /**
+     * The default duration of media that must be buffered for playback to start or resume following a
+     * user action such as a seek, in milliseconds.
+     */
+    private static final int DEFAULT_BUFFER_FOR_PLAYBACK_MS = 2500;
+
+    /**
+     * The default duration of media that must be buffered for playback to resume after a rebuffer,
+     * in milliseconds. A rebuffer is defined to be caused by buffer depletion rather than a user
+     * action.
+     */
+    private static final int DEFAULT_BUFFER_FOR_PLAYBACK_AFTER_REBUFFER_MS = 5000;
+
     private final IBinder binder = new LocalBinder();
     private ForegroundAudioPlayer foregroundAudioPlayer;
     private MediaNotificationManager mediaNotificationManager;
@@ -205,7 +235,12 @@ public class ForegroundAudioPlayer extends Service implements AudioPlayer {
     @Override
     public void initExoPlayer(int index) {
         DefaultTrackSelector trackSelector = new DefaultTrackSelector();
-        player = ExoPlayerFactory.newSimpleInstance(this.context, trackSelector, new InsightLoadControl());
+        DefaultLoadControl loadControl = new DefaultLoadControl.Builder()
+                .setAllocator(new DefaultAllocator(true, C.DEFAULT_BUFFER_SEGMENT_SIZE))
+                .setBufferDurationsMs(
+                        DEFAULT_MIN_BUFFER_MS, DEFAULT_MAX_BUFFER_MS, DEFAULT_BUFFER_FOR_PLAYBACK_MS, DEFAULT_BUFFER_FOR_PLAYBACK_AFTER_REBUFFER_MS
+                ).createDefaultLoadControl();
+        player = ExoPlayerFactory.newSimpleInstance(this.context, trackSelector, loadControl);
         player.setForegroundMode(true);
         // playlist/single audio load
         if (this.playerMode == PlayerMode.PLAYLIST) {

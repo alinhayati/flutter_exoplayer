@@ -18,26 +18,32 @@ import java.io.File;
 import okhttp3.OkHttpClient;
 
 class InsightCacheDataSourceFactory implements DataSource.Factory {
+
     private Context context;
     private Cache cache;
+    private CacheDataSink cacheDataSink;
+    private FileDataSource fileDataSource = new FileDataSource();
 
     InsightCacheDataSourceFactory(Context context) {
         this.context = context;
+        long DEFAULT_MEDIA_CACHE_SIZE = 200 * 1024 * 1024L;
+        cache = new SimpleCache(
+                new File(context.getCacheDir(), "media"),
+                new LeastRecentlyUsedCacheEvictor(DEFAULT_MEDIA_CACHE_SIZE),
+                new ExoDatabaseProvider(context)
+        );
+        cacheDataSink = new CacheDataSink(cache, DEFAULT_MEDIA_CACHE_SIZE);
+
     }
 
     @Override
     public DataSource createDataSource() {
-        final long DEFAULT_MEDIA_CACHE_SIZE = 200 * 1024 * 1024L;
         DataSource.Factory httpDataSourceFactory = new OkHttpDataSourceFactory(new OkHttpClient()
-                , Util.getUserAgent(this.context, "exoPlayerLibrary"));
-        if (cache == null)
-            cache = new SimpleCache(new File(this.context.getCacheDir().getAbsolutePath() +
-                    "media"), new LeastRecentlyUsedCacheEvictor(DEFAULT_MEDIA_CACHE_SIZE),
-                    new ExoDatabaseProvider(this.context));
+                , Util.getUserAgent(context, "exoPlayerLibrary"));
         return new CacheDataSource(cache,
                 httpDataSourceFactory.createDataSource(),
-                new FileDataSource(),
-                new CacheDataSink(cache, DEFAULT_MEDIA_CACHE_SIZE),
+                fileDataSource,
+                cacheDataSink,
                 CacheDataSource.FLAG_BLOCK_ON_CACHE | CacheDataSource.FLAG_IGNORE_CACHE_ON_ERROR,
                 null);
     }
