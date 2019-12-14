@@ -32,22 +32,18 @@ import com.google.android.exoplayer2.analytics.AnalyticsListener;
 import com.google.android.exoplayer2.audio.AudioAttributes;
 import com.google.android.exoplayer2.database.ExoDatabaseProvider;
 import com.google.android.exoplayer2.decoder.DecoderCounters;
-import com.google.android.exoplayer2.ext.okhttp.OkHttpDataSourceFactory;
 import com.google.android.exoplayer2.metadata.Metadata;
 import com.google.android.exoplayer2.source.ConcatenatingMediaSource;
 import com.google.android.exoplayer2.source.MediaSource;
 import com.google.android.exoplayer2.source.MediaSourceEventListener;
 import com.google.android.exoplayer2.source.ProgressiveMediaSource;
 import com.google.android.exoplayer2.source.TrackGroupArray;
-import com.google.android.exoplayer2.trackselection.AdaptiveTrackSelection;
 import com.google.android.exoplayer2.trackselection.DefaultTrackSelector;
 import com.google.android.exoplayer2.trackselection.TrackSelectionArray;
 import com.google.android.exoplayer2.upstream.DataSource;
-import com.google.android.exoplayer2.upstream.DefaultBandwidthMeter;
+import com.google.android.exoplayer2.upstream.DefaultAllocator;
 import com.google.android.exoplayer2.upstream.DefaultDataSourceFactory;
 import com.google.android.exoplayer2.upstream.cache.Cache;
-import com.google.android.exoplayer2.upstream.cache.CacheDataSource;
-import com.google.android.exoplayer2.upstream.cache.CacheDataSourceFactory;
 import com.google.android.exoplayer2.upstream.cache.LeastRecentlyUsedCacheEvictor;
 import com.google.android.exoplayer2.upstream.cache.SimpleCache;
 import com.google.android.exoplayer2.util.Util;
@@ -64,9 +60,9 @@ import danielr2001.audioplayer.enums.PlayerState;
 import danielr2001.audioplayer.interfaces.AudioPlayer;
 import danielr2001.audioplayer.models.AudioObject;
 import danielr2001.audioplayer.notifications.MediaNotificationManager;
-import okhttp3.OkHttpClient;
 
 public class ForegroundAudioPlayer extends Service implements AudioPlayer {
+
     private final IBinder binder = new LocalBinder();
     private ForegroundAudioPlayer foregroundAudioPlayer;
     private MediaNotificationManager mediaNotificationManager;
@@ -113,48 +109,55 @@ public class ForegroundAudioPlayer extends Service implements AudioPlayer {
             } else {
                 currentAudioObject = this.audioObject;
             }
-            if (intent.getAction().equals(MediaNotificationManager.PREVIOUS_ACTION)) {
-                if (currentAudioObject.getNotificationActionCallbackMode() == NotificationActionCallbackMode.DEFAULT) {
-                    previous();
-                } else {
-                    ref.handleNotificationActionCallback(this.foregroundAudioPlayer,
-                            NotificationActionName.PREVIOUS);
-                }
-            } else if (intent.getAction().equals(MediaNotificationManager.PLAY_ACTION)) {
-                if (currentAudioObject.getNotificationActionCallbackMode() == NotificationActionCallbackMode.DEFAULT) {
-                    if (!stopped) {
-                        resume();
+            switch (intent.getAction()) {
+                case MediaNotificationManager.PREVIOUS_ACTION:
+                    if (currentAudioObject.getNotificationActionCallbackMode() == NotificationActionCallbackMode.DEFAULT) {
+                        previous();
                     } else {
-                        if (playerMode == PlayerMode.PLAYLIST) {
-                            playAll(audioObjects, 0);
-                        } else {
-                            play(audioObject);
-                        }
+                        ref.handleNotificationActionCallback(this.foregroundAudioPlayer,
+                                NotificationActionName.PREVIOUS);
                     }
-                } else {
+                    break;
+                case MediaNotificationManager.PLAY_ACTION:
+                    if (currentAudioObject.getNotificationActionCallbackMode() == NotificationActionCallbackMode.DEFAULT) {
+                        if (!stopped) {
+                            resume();
+                        } else {
+                            if (playerMode == PlayerMode.PLAYLIST) {
+                                playAll(audioObjects, 0);
+                            } else {
+                                play(audioObject);
+                            }
+                        }
+                    } else {
+                        ref.handleNotificationActionCallback(this.foregroundAudioPlayer,
+                                NotificationActionName.PLAY);
+                    }
+                    break;
+                case MediaNotificationManager.PAUSE_ACTION:
+                    if (currentAudioObject.getNotificationActionCallbackMode() == NotificationActionCallbackMode.DEFAULT) {
+                        pause();
+                    } else {
+                        ref.handleNotificationActionCallback(this.foregroundAudioPlayer,
+                                NotificationActionName.PAUSE);
+                    }
+                    break;
+                case MediaNotificationManager.NEXT_ACTION:
+                    if (currentAudioObject.getNotificationActionCallbackMode() == NotificationActionCallbackMode.DEFAULT) {
+                        next();
+                    } else {
+                        ref.handleNotificationActionCallback(this.foregroundAudioPlayer,
+                                NotificationActionName.NEXT);
+                    }
+                    break;
+                case MediaNotificationManager.CUSTOM1_ACTION:
                     ref.handleNotificationActionCallback(this.foregroundAudioPlayer,
-                            NotificationActionName.PLAY);
-                }
-            } else if (intent.getAction().equals(MediaNotificationManager.PAUSE_ACTION)) {
-                if (currentAudioObject.getNotificationActionCallbackMode() == NotificationActionCallbackMode.DEFAULT) {
-                    pause();
-                } else {
+                            NotificationActionName.CUSTOM1);
+                    break;
+                case MediaNotificationManager.CUSTOM2_ACTION:
                     ref.handleNotificationActionCallback(this.foregroundAudioPlayer,
-                            NotificationActionName.PAUSE);
-                }
-            } else if (intent.getAction().equals(MediaNotificationManager.NEXT_ACTION)) {
-                if (currentAudioObject.getNotificationActionCallbackMode() == NotificationActionCallbackMode.DEFAULT) {
-                    next();
-                } else {
-                    ref.handleNotificationActionCallback(this.foregroundAudioPlayer,
-                            NotificationActionName.NEXT);
-                }
-            } else if (intent.getAction().equals(MediaNotificationManager.CUSTOM1_ACTION)) {
-                ref.handleNotificationActionCallback(this.foregroundAudioPlayer,
-                        NotificationActionName.CUSTOM1);
-            } else if (intent.getAction().equals(MediaNotificationManager.CUSTOM2_ACTION)) {
-                ref.handleNotificationActionCallback(this.foregroundAudioPlayer,
-                        NotificationActionName.CUSTOM2);
+                            NotificationActionName.CUSTOM2);
+                    break;
             }
         }
         return START_STICKY;
@@ -175,6 +178,8 @@ public class ForegroundAudioPlayer extends Service implements AudioPlayer {
         Notification notification = new NotificationCompat.Builder(this, MediaNotificationManager.CHANNEL_ID)
                 .setContentTitle("Initializing Audio Player")
                 .setContentIntent(pendingIntent)
+                .setSound(null)
+                .setVibrate(null)
                 .build();
 
         startForeground(MediaNotificationManager.NOTIFICATION_ID, notification);
@@ -187,7 +192,9 @@ public class ForegroundAudioPlayer extends Service implements AudioPlayer {
                     "Playback",
                     NotificationManager.IMPORTANCE_DEFAULT
             );
-
+            serviceChannel.setSound(null, null);
+            serviceChannel.enableLights(false);
+            serviceChannel.enableVibration(false);
             NotificationManager manager = getSystemService(NotificationManager.class);
             manager.createNotificationChannel(serviceChannel);
         }
@@ -206,38 +213,55 @@ public class ForegroundAudioPlayer extends Service implements AudioPlayer {
 
     @Override
     public void initExoPlayer(int index) {
-        DefaultLoadControl loadControl =
-                new DefaultLoadControl.Builder().setBufferDurationsMs(3600000, 7200000,
-                        DefaultLoadControl.DEFAULT_BUFFER_FOR_PLAYBACK_MS,
-                        DefaultLoadControl.DEFAULT_BUFFER_FOR_PLAYBACK_AFTER_REBUFFER_MS).createDefaultLoadControl();
-        DefaultTrackSelector trackSelector =
-                new DefaultTrackSelector(new AdaptiveTrackSelection.Factory(new DefaultBandwidthMeter.Builder(this.context).build()));
+        DefaultTrackSelector trackSelector = new DefaultTrackSelector();
+        DefaultLoadControl loadControl = new DefaultLoadControl.Builder()
+                .setAllocator(new DefaultAllocator(true, C.DEFAULT_BUFFER_SEGMENT_SIZE))
+                .setBufferDurationsMs(
+                        InsightExoPlayerConstants.DEFAULT_MIN_BUFFER_MS,
+                        InsightExoPlayerConstants.DEFAULT_MAX_BUFFER_MS,
+                        InsightExoPlayerConstants.DEFAULT_BUFFER_FOR_PLAYBACK_MS,
+                        InsightExoPlayerConstants.DEFAULT_BUFFER_FOR_PLAYBACK_AFTER_REBUFFER_MS
+                ).createDefaultLoadControl();
+        if (cache == null) {
+            cache = new SimpleCache(
+                    new File(context.getCacheDir(), "media"),
+                    new LeastRecentlyUsedCacheEvictor(InsightExoPlayerConstants.DEFAULT_MEDIA_CACHE_SIZE),
+                    new ExoDatabaseProvider(context));
+        }
         player = ExoPlayerFactory.newSimpleInstance(this.context, trackSelector, loadControl);
         player.setForegroundMode(true);
+        DataSource.Factory offlineDataSourceFactory = new DefaultDataSourceFactory(this, Util.getUserAgent(this.context, "exoPlayerLibrary"));
+        DataSource.Factory onlineDataSourceFactory = new InsightCacheDataSourceFactory(this.context, cache);
         // playlist/single audio load
         if (this.playerMode == PlayerMode.PLAYLIST) {
             ConcatenatingMediaSource concatenatingMediaSource = new ConcatenatingMediaSource();
-            DataSource.Factory dataSourceFactory = buildDataSourceFactory();
             for (AudioObject audioObject : audioObjects) {
-                MediaSource mediaSource = new ProgressiveMediaSource.Factory(dataSourceFactory)
-                        .createMediaSource(Uri.parse(audioObject.getUrl()));
+                String url = audioObject.getUrl();
+                MediaSource mediaSource;
+                if (URLUtil.isHttpsUrl(url) || URLUtil.isHttpUrl(url)) {
+                    mediaSource = new ProgressiveMediaSource.Factory(onlineDataSourceFactory)
+                            .createMediaSource(Uri.parse(url));
+                } else {
+                    mediaSource = new ProgressiveMediaSource.Factory(offlineDataSourceFactory)
+                            .createMediaSource(Uri.parse(url));
+                }
                 concatenatingMediaSource.addMediaSource(mediaSource);
             }
-            player.prepare(concatenatingMediaSource);
+            player.prepare(concatenatingMediaSource, true, false);
             if (index != 0) {
                 player.seekTo(index, 0);
             }
         } else {
             String url = this.audioObject.getUrl();
-            DataSource.Factory dataSourceFactory;
+            MediaSource mediaSource;
             if (URLUtil.isHttpsUrl(url) || URLUtil.isHttpUrl(url)) {
-                dataSourceFactory = buildDataSourceFactory();
+                mediaSource = new ProgressiveMediaSource.Factory(onlineDataSourceFactory)
+                        .createMediaSource(Uri.parse(url));
             } else {
-                dataSourceFactory = new DefaultDataSourceFactory(this, Util.getUserAgent(this.context, "exoPlayerLibrary"));
+                mediaSource = new ProgressiveMediaSource.Factory(offlineDataSourceFactory)
+                        .createMediaSource(Uri.parse(url));
             }
-            MediaSource mediaSource = new ProgressiveMediaSource.Factory(dataSourceFactory)
-                    .createMediaSource(Uri.parse(this.audioObject.getUrl()));
-            player.prepare(mediaSource);
+            player.prepare(mediaSource, true, false);
         }
         // handle audio focus
         if (this.respectAudioFocus) { // ! TODO catch duck pause!
@@ -249,18 +273,6 @@ public class ForegroundAudioPlayer extends Service implements AudioPlayer {
         if (repeatMode) {
             player.setRepeatMode(player.REPEAT_MODE_ALL);
         }
-    }
-
-    private DataSource.Factory buildDataSourceFactory() {
-        final long DEFAULT_MEDIA_CACHE_SIZE = 200 * 1024 * 1024L;
-        DataSource.Factory httpDataSourceFactory = new OkHttpDataSourceFactory(new OkHttpClient()
-                , Util.getUserAgent(this.context, "exoPlayerLibrary"));
-        if (cache == null)
-            cache = new SimpleCache(new File(this.context.getCacheDir().getAbsolutePath() +
-                    "media"), new LeastRecentlyUsedCacheEvictor(DEFAULT_MEDIA_CACHE_SIZE),
-                    new ExoDatabaseProvider(this.context));
-        return new CacheDataSourceFactory(cache, httpDataSourceFactory,
-                CacheDataSource.FLAG_BLOCK_ON_CACHE | CacheDataSource.FLAG_IGNORE_CACHE_ON_ERROR);
     }
 
     @Override
@@ -352,13 +364,12 @@ public class ForegroundAudioPlayer extends Service implements AudioPlayer {
             this.stopped = false;
             this.released = true;
             this.completed = false;
-
+            this.cache.release();
+            this.cache = null;
             this.audioObject = null;
             this.audioObjects = null;
             player.release();
             player = null;
-            cache.release();
-            cache = null;
             ref.handleStateChange(this, PlayerState.RELEASED);
             stopSelf();
         }

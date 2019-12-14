@@ -5,6 +5,7 @@ import android.content.Context;
 import android.net.Uri;
 import android.util.Log;
 import android.view.Surface;
+import android.webkit.URLUtil;
 
 import androidx.annotation.Nullable;
 
@@ -20,22 +21,18 @@ import com.google.android.exoplayer2.analytics.AnalyticsListener;
 import com.google.android.exoplayer2.audio.AudioAttributes;
 import com.google.android.exoplayer2.database.ExoDatabaseProvider;
 import com.google.android.exoplayer2.decoder.DecoderCounters;
-import com.google.android.exoplayer2.ext.okhttp.OkHttpDataSourceFactory;
-import com.google.android.exoplayer2.extractor.DefaultExtractorsFactory;
 import com.google.android.exoplayer2.metadata.Metadata;
 import com.google.android.exoplayer2.source.ConcatenatingMediaSource;
 import com.google.android.exoplayer2.source.MediaSource;
 import com.google.android.exoplayer2.source.MediaSourceEventListener;
 import com.google.android.exoplayer2.source.ProgressiveMediaSource;
 import com.google.android.exoplayer2.source.TrackGroupArray;
-import com.google.android.exoplayer2.trackselection.AdaptiveTrackSelection;
 import com.google.android.exoplayer2.trackselection.DefaultTrackSelector;
 import com.google.android.exoplayer2.trackselection.TrackSelectionArray;
 import com.google.android.exoplayer2.upstream.DataSource;
-import com.google.android.exoplayer2.upstream.DefaultBandwidthMeter;
+import com.google.android.exoplayer2.upstream.DefaultAllocator;
+import com.google.android.exoplayer2.upstream.DefaultDataSourceFactory;
 import com.google.android.exoplayer2.upstream.cache.Cache;
-import com.google.android.exoplayer2.upstream.cache.CacheDataSource;
-import com.google.android.exoplayer2.upstream.cache.CacheDataSourceFactory;
 import com.google.android.exoplayer2.upstream.cache.LeastRecentlyUsedCacheEvictor;
 import com.google.android.exoplayer2.upstream.cache.SimpleCache;
 import com.google.android.exoplayer2.util.Util;
@@ -49,7 +46,6 @@ import danielr2001.audioplayer.enums.PlayerMode;
 import danielr2001.audioplayer.enums.PlayerState;
 import danielr2001.audioplayer.interfaces.AudioPlayer;
 import danielr2001.audioplayer.models.AudioObject;
-import okhttp3.OkHttpClient;
 
 public class BackgroundAudioPlayer implements AudioPlayer {
 
@@ -92,20 +88,38 @@ public class BackgroundAudioPlayer implements AudioPlayer {
 
     @Override
     public void initExoPlayer(int index) {
-        DefaultLoadControl loadControl =
-                new DefaultLoadControl.Builder().setBufferDurationsMs(3600000, 7200000,
-                        DefaultLoadControl.DEFAULT_BUFFER_FOR_PLAYBACK_MS,
-                        DefaultLoadControl.DEFAULT_BUFFER_FOR_PLAYBACK_AFTER_REBUFFER_MS).createDefaultLoadControl();
         DefaultTrackSelector trackSelector =
-                new DefaultTrackSelector(new AdaptiveTrackSelection.Factory(new DefaultBandwidthMeter.Builder(this.context).build()));
+                new DefaultTrackSelector();
+        DefaultLoadControl loadControl = new DefaultLoadControl.Builder()
+                .setAllocator(new DefaultAllocator(true, C.DEFAULT_BUFFER_SEGMENT_SIZE))
+                .setBufferDurationsMs(
+                        InsightExoPlayerConstants.DEFAULT_MIN_BUFFER_MS,
+                        InsightExoPlayerConstants.DEFAULT_MAX_BUFFER_MS,
+                        InsightExoPlayerConstants.DEFAULT_BUFFER_FOR_PLAYBACK_MS,
+                        InsightExoPlayerConstants.DEFAULT_BUFFER_FOR_PLAYBACK_AFTER_REBUFFER_MS
+                ).createDefaultLoadControl();
         player = ExoPlayerFactory.newSimpleInstance(this.context, trackSelector, loadControl);
-        DataSource.Factory dataSourceFactory = buildDataSourceFactory();
+        if(cache == null) {
+            cache = new SimpleCache(
+                    new File(context.getCacheDir(), "media"),
+                    new LeastRecentlyUsedCacheEvictor(InsightExoPlayerConstants.DEFAULT_MEDIA_CACHE_SIZE),
+                    new ExoDatabaseProvider(context));
+        }
+        DataSource.Factory offlineDataSourceFactory = new DefaultDataSourceFactory(this.context, Util.getUserAgent(this.context, "exoPlayerLibrary"));
+        DataSource.Factory onlineDataSourceFactory = new InsightCacheDataSourceFactory(this.context, cache);
         // playlist/single audio load
         if (playerMode == PlayerMode.PLAYLIST) {
             ConcatenatingMediaSource concatenatingMediaSource = new ConcatenatingMediaSource();
             for (AudioObject audioObject : audioObjects) {
-                MediaSource mediaSource =
-                        new ProgressiveMediaSource.Factory(dataSourceFactory).createMediaSource(Uri.parse(audioObject.getUrl()));
+                String url = audioObject.getUrl();
+                MediaSource mediaSource;
+                if (URLUtil.isHttpsUrl(url) || URLUtil.isHttpUrl(url)) {
+                    mediaSource = new ProgressiveMediaSource.Factory(onlineDataSourceFactory)
+                            .createMediaSource(Uri.parse(url));
+                } else {
+                    mediaSource = new ProgressiveMediaSource.Factory(offlineDataSourceFactory)
+                            .createMediaSource(Uri.parse(url));
+                }
                 concatenatingMediaSource.addMediaSource(mediaSource);
             }
             player.prepare(concatenatingMediaSource);
@@ -113,9 +127,16 @@ public class BackgroundAudioPlayer implements AudioPlayer {
                 player.seekTo(index, 0);
             }
         } else {
-            MediaSource mediaSource = new ProgressiveMediaSource.Factory(dataSourceFactory,
-                    new DefaultExtractorsFactory()).createMediaSource(Uri.parse(audioObject.getUrl()));
-            player.prepare(mediaSource);
+            String url = this.audioObject.getUrl();
+            MediaSource mediaSource;
+            if (URLUtil.isHttpsUrl(url) || URLUtil.isHttpUrl(url)) {
+                mediaSource = new ProgressiveMediaSource.Factory(onlineDataSourceFactory)
+                        .createMediaSource(Uri.parse(url));
+            } else {
+                mediaSource = new ProgressiveMediaSource.Factory(offlineDataSourceFactory)
+                        .createMediaSource(Uri.parse(url));
+            }
+            player.prepare(mediaSource, true, false);
         }
         //handle audio focus
         if (this.respectAudioFocus) {
@@ -129,18 +150,6 @@ public class BackgroundAudioPlayer implements AudioPlayer {
         if (repeatMode) {
             player.setRepeatMode(player.REPEAT_MODE_ALL);
         }
-    }
-
-    private DataSource.Factory buildDataSourceFactory() {
-        final long DEFAULT_MEDIA_CACHE_SIZE = 200 * 1024 * 1024L;
-        DataSource.Factory httpDataSourceFactory = new OkHttpDataSourceFactory(new OkHttpClient()
-                , Util.getUserAgent(this.context, "exoPlayerLibrary"));
-        if (cache == null)
-            cache = new SimpleCache(new File(this.context.getCacheDir().getAbsolutePath() +
-                    "media"), new LeastRecentlyUsedCacheEvictor(DEFAULT_MEDIA_CACHE_SIZE),
-                    new ExoDatabaseProvider(this.context));
-        return new CacheDataSourceFactory(cache, httpDataSourceFactory,
-                CacheDataSource.FLAG_BLOCK_ON_CACHE | CacheDataSource.FLAG_IGNORE_CACHE_ON_ERROR);
     }
 
     @Override
@@ -225,12 +234,11 @@ public class BackgroundAudioPlayer implements AudioPlayer {
             this.stopped = false;
             this.released = true;
             this.completed = false;
-
+            this.cache.release();
+            this.cache = null;
             this.audioObject = null;
             this.audioObjects = null;
             player.release();
-            cache.release();
-            cache = null;
             player = null;
             ref.handleStateChange(this, PlayerState.RELEASED);
         }
@@ -483,7 +491,7 @@ public class BackgroundAudioPlayer implements AudioPlayer {
                                       MediaSourceEventListener.MediaLoadData mediaLoadData) {
                 Log.d("BackgroundAudioPlayer",
                         "onLoadStarted:\neventTime=" + eventTime.currentPlaybackPositionMs +
-                                "\nloadEventInfo:" + "\n  bytes loaded:" + loadEventInfo.bytesLoaded + "\n    dataSpec:" + "\n       key=" + loadEventInfo.dataSpec.key + "\n       absoluteStreamPosition=" + loadEventInfo.dataSpec.absoluteStreamPosition + "\n       flags=" + loadEventInfo.dataSpec.flags + "\n       uri=" + loadEventInfo.dataSpec.uri + "\n       httpMethodString=" + loadEventInfo.dataSpec.getHttpMethodString() + "\n    elapsedRealtimeMs:" + loadEventInfo.elapsedRealtimeMs + "\n    loadDurationMs:" + loadEventInfo.loadDurationMs + "\n    entrySet:" + loadEventInfo.responseHeaders.entrySet() + "\nMediaLoadData:" + "\n    dataType=" + mediaLoadData.dataType + "\n    mediaEndTimeMs=" + mediaLoadData.mediaEndTimeMs + "\n    mediaStartTimeMs=" + mediaLoadData.mediaStartTimeMs + "\n    trackSelectionReason=" + mediaLoadData.trackSelectionReason + "\n    trackType=" + mediaLoadData.trackType + "\n    trackSelectionData=" + mediaLoadData.trackSelectionData.toString());
+                                "\nloadEventInfo:" + "\n  bytes loaded:" + loadEventInfo.bytesLoaded + "\n    dataSpec:" + "\n       key=" + loadEventInfo.dataSpec.key + "\n       absoluteStreamPosition=" + loadEventInfo.dataSpec.absoluteStreamPosition + "\n       flags=" + loadEventInfo.dataSpec.flags + "\n       uri=" + loadEventInfo.dataSpec.uri + "\n       httpMethodString=" + loadEventInfo.dataSpec.getHttpMethodString() + "\n    elapsedRealtimeMs:" + loadEventInfo.elapsedRealtimeMs + "\n    loadDurationMs:" + loadEventInfo.loadDurationMs + "\n    entrySet:" + loadEventInfo.responseHeaders.entrySet() + "\nMediaLoadData:" + "\n    dataType=" + mediaLoadData.dataType + "\n    mediaEndTimeMs=" + mediaLoadData.mediaEndTimeMs + "\n    mediaStartTimeMs=" + mediaLoadData.mediaStartTimeMs + "\n    trackSelectionReason=" + mediaLoadData.trackSelectionReason + "\n    trackType=" + mediaLoadData.trackType);
             }
 
             @Override
@@ -492,7 +500,7 @@ public class BackgroundAudioPlayer implements AudioPlayer {
                                         MediaSourceEventListener.MediaLoadData mediaLoadData) {
                 Log.d("BackgroundAudioPlayer",
                         "onLoadCompleted:\neventTime=" + eventTime.currentPlaybackPositionMs +
-                                "\nloadEventInfo:" + "\n  bytes loaded:" + loadEventInfo.bytesLoaded + "\n    dataSpec:" + "\n       key=" + loadEventInfo.dataSpec.key + "\n       absoluteStreamPosition=" + loadEventInfo.dataSpec.absoluteStreamPosition + "\n       flags=" + loadEventInfo.dataSpec.flags + "\n       uri=" + loadEventInfo.dataSpec.uri + "\n       httpMethodString=" + loadEventInfo.dataSpec.getHttpMethodString() + "\n    elapsedRealtimeMs:" + loadEventInfo.elapsedRealtimeMs + "\n    loadDurationMs:" + loadEventInfo.loadDurationMs + "\n    entrySet:" + loadEventInfo.responseHeaders.entrySet() + "\nMediaLoadData:" + "\n    dataType=" + mediaLoadData.dataType + "\n    mediaEndTimeMs=" + mediaLoadData.mediaEndTimeMs + "\n    mediaStartTimeMs=" + mediaLoadData.mediaStartTimeMs + "\n    trackSelectionReason=" + mediaLoadData.trackSelectionReason + "\n    trackType=" + mediaLoadData.trackType + "\n    trackSelectionData=" + mediaLoadData.trackSelectionData.toString());
+                                "\nloadEventInfo:" + "\n  bytes loaded:" + loadEventInfo.bytesLoaded + "\n    dataSpec:" + "\n       key=" + loadEventInfo.dataSpec.key + "\n       absoluteStreamPosition=" + loadEventInfo.dataSpec.absoluteStreamPosition + "\n       flags=" + loadEventInfo.dataSpec.flags + "\n       uri=" + loadEventInfo.dataSpec.uri + "\n       httpMethodString=" + loadEventInfo.dataSpec.getHttpMethodString() + "\n    elapsedRealtimeMs:" + loadEventInfo.elapsedRealtimeMs + "\n    loadDurationMs:" + loadEventInfo.loadDurationMs + "\n    entrySet:" + loadEventInfo.responseHeaders.entrySet() + "\nMediaLoadData:" + "\n    dataType=" + mediaLoadData.dataType + "\n    mediaEndTimeMs=" + mediaLoadData.mediaEndTimeMs + "\n    mediaStartTimeMs=" + mediaLoadData.mediaStartTimeMs + "\n    trackSelectionReason=" + mediaLoadData.trackSelectionReason + "\n    trackType=" + mediaLoadData.trackType);
             }
 
             @Override
@@ -501,7 +509,7 @@ public class BackgroundAudioPlayer implements AudioPlayer {
                                        MediaSourceEventListener.MediaLoadData mediaLoadData) {
                 Log.d("BackgroundAudioPlayer",
                         "onLoadCanceled:\neventTime=" + eventTime.currentPlaybackPositionMs +
-                                "\nloadEventInfo:" + "\n  bytes loaded:" + loadEventInfo.bytesLoaded + "\n    dataSpec:" + "\n       key=" + loadEventInfo.dataSpec.key + "\n       absoluteStreamPosition=" + loadEventInfo.dataSpec.absoluteStreamPosition + "\n       flags=" + loadEventInfo.dataSpec.flags + "\n       uri=" + loadEventInfo.dataSpec.uri + "\n       httpMethodString=" + loadEventInfo.dataSpec.getHttpMethodString() + "\n    elapsedRealtimeMs:" + loadEventInfo.elapsedRealtimeMs + "\n    loadDurationMs:" + loadEventInfo.loadDurationMs + "\n    entrySet:" + loadEventInfo.responseHeaders.entrySet() + "\nMediaLoadData:" + "\n    dataType=" + mediaLoadData.dataType + "\n    mediaEndTimeMs=" + mediaLoadData.mediaEndTimeMs + "\n    mediaStartTimeMs=" + mediaLoadData.mediaStartTimeMs + "\n    trackSelectionReason=" + mediaLoadData.trackSelectionReason + "\n    trackType=" + mediaLoadData.trackType + "\n    trackSelectionData=" + mediaLoadData.trackSelectionData.toString());
+                                "\nloadEventInfo:" + "\n  bytes loaded:" + loadEventInfo.bytesLoaded + "\n    dataSpec:" + "\n       key=" + loadEventInfo.dataSpec.key + "\n       absoluteStreamPosition=" + loadEventInfo.dataSpec.absoluteStreamPosition + "\n       flags=" + loadEventInfo.dataSpec.flags + "\n       uri=" + loadEventInfo.dataSpec.uri + "\n       httpMethodString=" + loadEventInfo.dataSpec.getHttpMethodString() + "\n    elapsedRealtimeMs:" + loadEventInfo.elapsedRealtimeMs + "\n    loadDurationMs:" + loadEventInfo.loadDurationMs + "\n    entrySet:" + loadEventInfo.responseHeaders.entrySet() + "\nMediaLoadData:" + "\n    dataType=" + mediaLoadData.dataType + "\n    mediaEndTimeMs=" + mediaLoadData.mediaEndTimeMs + "\n    mediaStartTimeMs=" + mediaLoadData.mediaStartTimeMs + "\n    trackSelectionReason=" + mediaLoadData.trackSelectionReason + "\n    trackType=" + mediaLoadData.trackType);
             }
 
             @Override
@@ -511,21 +519,21 @@ public class BackgroundAudioPlayer implements AudioPlayer {
                                     IOException error, boolean wasCanceled) {
                 Log.d("BackgroundAudioPlayer",
                         "onLoadError:\neventTime=" + eventTime.currentPlaybackPositionMs +
-                                "\nloadEventInfo:" + "\n  bytes loaded:" + loadEventInfo.bytesLoaded + "\n    dataSpec:" + "\n       key=" + loadEventInfo.dataSpec.key + "\n       absoluteStreamPosition=" + loadEventInfo.dataSpec.absoluteStreamPosition + "\n       flags=" + loadEventInfo.dataSpec.flags + "\n       uri=" + loadEventInfo.dataSpec.uri + "\n       httpMethodString=" + loadEventInfo.dataSpec.getHttpMethodString() + "\n    elapsedRealtimeMs:" + loadEventInfo.elapsedRealtimeMs + "\n    loadDurationMs:" + loadEventInfo.loadDurationMs + "\n    entrySet:" + loadEventInfo.responseHeaders.entrySet() + "\nMediaLoadData:" + "\n    dataType=" + mediaLoadData.dataType + "\n    mediaEndTimeMs=" + mediaLoadData.mediaEndTimeMs + "\n    mediaStartTimeMs=" + mediaLoadData.mediaStartTimeMs + "\n    trackSelectionReason=" + mediaLoadData.trackSelectionReason + "\n    trackType=" + mediaLoadData.trackType + "\n    trackSelectionData=" + mediaLoadData.trackSelectionData.toString() + "\n   error=" + error.getMessage() + "\n  wasCanceled=" + wasCanceled);
+                                "\nloadEventInfo:" + "\n  bytes loaded:" + loadEventInfo.bytesLoaded + "\n    dataSpec:" + "\n       key=" + loadEventInfo.dataSpec.key + "\n       absoluteStreamPosition=" + loadEventInfo.dataSpec.absoluteStreamPosition + "\n       flags=" + loadEventInfo.dataSpec.flags + "\n       uri=" + loadEventInfo.dataSpec.uri + "\n       httpMethodString=" + loadEventInfo.dataSpec.getHttpMethodString() + "\n    elapsedRealtimeMs:" + loadEventInfo.elapsedRealtimeMs + "\n    loadDurationMs:" + loadEventInfo.loadDurationMs + "\n    entrySet:" + loadEventInfo.responseHeaders.entrySet() + "\nMediaLoadData:" + "\n    dataType=" + mediaLoadData.dataType + "\n    mediaEndTimeMs=" + mediaLoadData.mediaEndTimeMs + "\n    mediaStartTimeMs=" + mediaLoadData.mediaStartTimeMs + "\n    trackSelectionReason=" + mediaLoadData.trackSelectionReason + "\n    trackType=" + mediaLoadData.trackType + "\n   error=" + error.getMessage() + "\n  wasCanceled=" + wasCanceled);
             }
 
             @Override
             public void onDownstreamFormatChanged(EventTime eventTime,
                                                   MediaSourceEventListener.MediaLoadData mediaLoadData) {
                 Log.d("BackgroundAudioPlayer",
-                        "onDownstreamFormatChanged:\neventTime=" + eventTime.currentPlaybackPositionMs + "\nMediaLoadData:" + "\n    dataType=" + mediaLoadData.dataType + "\n    mediaEndTimeMs=" + mediaLoadData.mediaEndTimeMs + "\n    mediaStartTimeMs=" + mediaLoadData.mediaStartTimeMs + "\n    trackSelectionReason=" + mediaLoadData.trackSelectionReason + "\n    trackType=" + mediaLoadData.trackType + "\n    trackSelectionData=" + mediaLoadData.trackSelectionData.toString());
+                        "onDownstreamFormatChanged:\neventTime=" + eventTime.currentPlaybackPositionMs + "\nMediaLoadData:" + "\n    dataType=" + mediaLoadData.dataType + "\n    mediaEndTimeMs=" + mediaLoadData.mediaEndTimeMs + "\n    mediaStartTimeMs=" + mediaLoadData.mediaStartTimeMs + "\n    trackSelectionReason=" + mediaLoadData.trackSelectionReason + "\n    trackType=" + mediaLoadData.trackType);
             }
 
             @Override
             public void onUpstreamDiscarded(EventTime eventTime,
                                             MediaSourceEventListener.MediaLoadData mediaLoadData) {
                 Log.d("BackgroundAudioPlayer",
-                        "onUpstreamDiscarded:\neventTime=" + eventTime.currentPlaybackPositionMs + "\nMediaLoadData:" + "\n    dataType=" + mediaLoadData.dataType + "\n    mediaEndTimeMs=" + mediaLoadData.mediaEndTimeMs + "\n    mediaStartTimeMs=" + mediaLoadData.mediaStartTimeMs + "\n    trackSelectionReason=" + mediaLoadData.trackSelectionReason + "\n    trackType=" + mediaLoadData.trackType + "\n    trackSelectionData=" + mediaLoadData.trackSelectionData.toString());
+                        "onUpstreamDiscarded:\neventTime=" + eventTime.currentPlaybackPositionMs + "\nMediaLoadData:" + "\n    dataType=" + mediaLoadData.dataType + "\n    mediaEndTimeMs=" + mediaLoadData.mediaEndTimeMs + "\n    mediaStartTimeMs=" + mediaLoadData.mediaStartTimeMs + "\n    trackSelectionReason=" + mediaLoadData.trackSelectionReason + "\n    trackType=" + mediaLoadData.trackType);
             }
 
             @Override
