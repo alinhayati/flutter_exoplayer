@@ -30,6 +30,7 @@ import com.google.android.exoplayer2.Player;
 import com.google.android.exoplayer2.SimpleExoPlayer;
 import com.google.android.exoplayer2.analytics.AnalyticsListener;
 import com.google.android.exoplayer2.audio.AudioAttributes;
+import com.google.android.exoplayer2.database.ExoDatabaseProvider;
 import com.google.android.exoplayer2.decoder.DecoderCounters;
 import com.google.android.exoplayer2.metadata.Metadata;
 import com.google.android.exoplayer2.source.ConcatenatingMediaSource;
@@ -42,8 +43,12 @@ import com.google.android.exoplayer2.trackselection.TrackSelectionArray;
 import com.google.android.exoplayer2.upstream.DataSource;
 import com.google.android.exoplayer2.upstream.DefaultAllocator;
 import com.google.android.exoplayer2.upstream.DefaultDataSourceFactory;
+import com.google.android.exoplayer2.upstream.cache.Cache;
+import com.google.android.exoplayer2.upstream.cache.LeastRecentlyUsedCacheEvictor;
+import com.google.android.exoplayer2.upstream.cache.SimpleCache;
 import com.google.android.exoplayer2.util.Util;
 
+import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
 
@@ -57,33 +62,6 @@ import danielr2001.audioplayer.models.AudioObject;
 import danielr2001.audioplayer.notifications.MediaNotificationManager;
 
 public class ForegroundAudioPlayer extends Service implements AudioPlayer {
-
-    /**
-     * The default minimum duration of media that the player will attempt to ensure is buffered at all
-     * times, in milliseconds.
-     */
-    private static final int DEFAULT_MIN_BUFFER_MS = 15000;
-
-    /**
-     * The default maximum duration of media that the player will attempt to buffer, in milliseconds.
-     * <p>
-     * We want to let exoplayer to burst buffering initially instead of keeping a long-live connection and buffer gradually
-     * 2 HOURS
-     */
-    private static final int DEFAULT_MAX_BUFFER_MS = 2 * 60 * 60 * 1000;
-
-    /**
-     * The default duration of media that must be buffered for playback to start or resume following a
-     * user action such as a seek, in milliseconds.
-     */
-    private static final int DEFAULT_BUFFER_FOR_PLAYBACK_MS = 2500;
-
-    /**
-     * The default duration of media that must be buffered for playback to resume after a rebuffer,
-     * in milliseconds. A rebuffer is defined to be caused by buffer depletion rather than a user
-     * action.
-     */
-    private static final int DEFAULT_BUFFER_FOR_PLAYBACK_AFTER_REBUFFER_MS = 5000;
 
     private final IBinder binder = new LocalBinder();
     private ForegroundAudioPlayer foregroundAudioPlayer;
@@ -108,6 +86,7 @@ public class ForegroundAudioPlayer extends Service implements AudioPlayer {
     private SimpleExoPlayer player;
     private ArrayList<AudioObject> audioObjects;
     private AudioObject audioObject;
+    private Cache cache;
 
     @Nullable
     @Override
@@ -238,8 +217,17 @@ public class ForegroundAudioPlayer extends Service implements AudioPlayer {
         DefaultLoadControl loadControl = new DefaultLoadControl.Builder()
                 .setAllocator(new DefaultAllocator(true, C.DEFAULT_BUFFER_SEGMENT_SIZE))
                 .setBufferDurationsMs(
-                        DEFAULT_MIN_BUFFER_MS, DEFAULT_MAX_BUFFER_MS, DEFAULT_BUFFER_FOR_PLAYBACK_MS, DEFAULT_BUFFER_FOR_PLAYBACK_AFTER_REBUFFER_MS
+                        InsightExoPlayerConstants.DEFAULT_MIN_BUFFER_MS,
+                        InsightExoPlayerConstants.DEFAULT_MAX_BUFFER_MS,
+                        InsightExoPlayerConstants.DEFAULT_BUFFER_FOR_PLAYBACK_MS,
+                        InsightExoPlayerConstants.DEFAULT_BUFFER_FOR_PLAYBACK_AFTER_REBUFFER_MS
                 ).createDefaultLoadControl();
+        if(cache == null) {
+            cache = new SimpleCache(
+                    new File(context.getCacheDir(), "media"),
+                    new LeastRecentlyUsedCacheEvictor(InsightExoPlayerConstants.DEFAULT_MEDIA_CACHE_SIZE),
+                    new ExoDatabaseProvider(context));
+        }
         player = ExoPlayerFactory.newSimpleInstance(this.context, trackSelector, loadControl);
         player.setForegroundMode(true);
         // playlist/single audio load
@@ -249,7 +237,7 @@ public class ForegroundAudioPlayer extends Service implements AudioPlayer {
                 String url = audioObject.getUrl();
                 DataSource.Factory dataSourceFactory;
                 if (URLUtil.isHttpsUrl(url) || URLUtil.isHttpUrl(url)) {
-                    dataSourceFactory = new InsightCacheDataSourceFactory(this.context);
+                    dataSourceFactory = new InsightCacheDataSourceFactory(this.context, cache);
                 } else {
                     dataSourceFactory = new DefaultDataSourceFactory(this, Util.getUserAgent(this.context, "exoPlayerLibrary"));
                 }
@@ -265,7 +253,7 @@ public class ForegroundAudioPlayer extends Service implements AudioPlayer {
             String url = this.audioObject.getUrl();
             DataSource.Factory dataSourceFactory;
             if (URLUtil.isHttpsUrl(url) || URLUtil.isHttpUrl(url)) {
-                dataSourceFactory = new InsightCacheDataSourceFactory(this.context);
+                dataSourceFactory = new InsightCacheDataSourceFactory(this.context, cache);
             } else {
                 dataSourceFactory = new DefaultDataSourceFactory(this, Util.getUserAgent(this.context, "exoPlayerLibrary"));
             }
@@ -374,7 +362,8 @@ public class ForegroundAudioPlayer extends Service implements AudioPlayer {
             this.stopped = false;
             this.released = true;
             this.completed = false;
-
+            this.cache.release();
+            this.cache = null;
             this.audioObject = null;
             this.audioObjects = null;
             player.release();

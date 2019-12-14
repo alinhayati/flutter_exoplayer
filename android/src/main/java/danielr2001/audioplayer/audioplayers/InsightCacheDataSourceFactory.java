@@ -2,18 +2,14 @@ package danielr2001.audioplayer.audioplayers;
 
 import android.content.Context;
 
-import com.google.android.exoplayer2.database.ExoDatabaseProvider;
 import com.google.android.exoplayer2.ext.okhttp.OkHttpDataSourceFactory;
 import com.google.android.exoplayer2.upstream.DataSource;
 import com.google.android.exoplayer2.upstream.FileDataSource;
 import com.google.android.exoplayer2.upstream.cache.Cache;
 import com.google.android.exoplayer2.upstream.cache.CacheDataSink;
 import com.google.android.exoplayer2.upstream.cache.CacheDataSource;
-import com.google.android.exoplayer2.upstream.cache.LeastRecentlyUsedCacheEvictor;
-import com.google.android.exoplayer2.upstream.cache.SimpleCache;
 import com.google.android.exoplayer2.util.Util;
 
-import java.io.File;
 import java.util.concurrent.TimeUnit;
 
 import okhttp3.OkHttpClient;
@@ -21,20 +17,14 @@ import okhttp3.OkHttpClient;
 class InsightCacheDataSourceFactory implements DataSource.Factory {
 
     private Context context;
-    private Cache cache;
     private CacheDataSink cacheDataSink;
     private FileDataSource fileDataSource = new FileDataSource();
+    private Cache cache;
 
-    InsightCacheDataSourceFactory(Context context) {
+    InsightCacheDataSourceFactory(Context context, Cache cache) {
         this.context = context;
-        long DEFAULT_MEDIA_CACHE_SIZE = 200 * 1024 * 1024L;
-        cache = new SimpleCache(
-                new File(context.getCacheDir(), "media"),
-                new LeastRecentlyUsedCacheEvictor(DEFAULT_MEDIA_CACHE_SIZE),
-                new ExoDatabaseProvider(context)
-        );
-        cacheDataSink = new CacheDataSink(cache, DEFAULT_MEDIA_CACHE_SIZE);
-
+        this.cache = cache;
+        cacheDataSink = new CacheDataSink(cache, InsightExoPlayerConstants.DEFAULT_MEDIA_CACHE_SIZE);
     }
 
     @Override
