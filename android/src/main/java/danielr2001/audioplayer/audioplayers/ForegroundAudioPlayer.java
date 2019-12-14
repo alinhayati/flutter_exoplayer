@@ -222,7 +222,7 @@ public class ForegroundAudioPlayer extends Service implements AudioPlayer {
                         InsightExoPlayerConstants.DEFAULT_BUFFER_FOR_PLAYBACK_MS,
                         InsightExoPlayerConstants.DEFAULT_BUFFER_FOR_PLAYBACK_AFTER_REBUFFER_MS
                 ).createDefaultLoadControl();
-        if(cache == null) {
+        if (cache == null) {
             cache = new SimpleCache(
                     new File(context.getCacheDir(), "media"),
                     new LeastRecentlyUsedCacheEvictor(InsightExoPlayerConstants.DEFAULT_MEDIA_CACHE_SIZE),
@@ -230,19 +230,21 @@ public class ForegroundAudioPlayer extends Service implements AudioPlayer {
         }
         player = ExoPlayerFactory.newSimpleInstance(this.context, trackSelector, loadControl);
         player.setForegroundMode(true);
+        DataSource.Factory offlineDataSourceFactory = new DefaultDataSourceFactory(this, Util.getUserAgent(this.context, "exoPlayerLibrary"));
+        DataSource.Factory onlineDataSourceFactory = new InsightCacheDataSourceFactory(this.context, cache);
         // playlist/single audio load
         if (this.playerMode == PlayerMode.PLAYLIST) {
             ConcatenatingMediaSource concatenatingMediaSource = new ConcatenatingMediaSource();
             for (AudioObject audioObject : audioObjects) {
                 String url = audioObject.getUrl();
-                DataSource.Factory dataSourceFactory;
+                MediaSource mediaSource;
                 if (URLUtil.isHttpsUrl(url) || URLUtil.isHttpUrl(url)) {
-                    dataSourceFactory = new InsightCacheDataSourceFactory(this.context, cache);
+                    mediaSource = new ProgressiveMediaSource.Factory(onlineDataSourceFactory)
+                            .createMediaSource(Uri.parse(url));
                 } else {
-                    dataSourceFactory = new DefaultDataSourceFactory(this, Util.getUserAgent(this.context, "exoPlayerLibrary"));
+                    mediaSource = new ProgressiveMediaSource.Factory(offlineDataSourceFactory)
+                            .createMediaSource(Uri.parse(url));
                 }
-                MediaSource mediaSource = new ProgressiveMediaSource.Factory(dataSourceFactory)
-                        .createMediaSource(Uri.parse(url));
                 concatenatingMediaSource.addMediaSource(mediaSource);
             }
             player.prepare(concatenatingMediaSource, true, false);
@@ -251,14 +253,14 @@ public class ForegroundAudioPlayer extends Service implements AudioPlayer {
             }
         } else {
             String url = this.audioObject.getUrl();
-            DataSource.Factory dataSourceFactory;
+            MediaSource mediaSource;
             if (URLUtil.isHttpsUrl(url) || URLUtil.isHttpUrl(url)) {
-                dataSourceFactory = new InsightCacheDataSourceFactory(this.context, cache);
+                mediaSource = new ProgressiveMediaSource.Factory(onlineDataSourceFactory)
+                        .createMediaSource(Uri.parse(url));
             } else {
-                dataSourceFactory = new DefaultDataSourceFactory(this, Util.getUserAgent(this.context, "exoPlayerLibrary"));
+                mediaSource = new ProgressiveMediaSource.Factory(offlineDataSourceFactory)
+                        .createMediaSource(Uri.parse(url));
             }
-            MediaSource mediaSource = new ProgressiveMediaSource.Factory(dataSourceFactory)
-                    .createMediaSource(Uri.parse(url));
             player.prepare(mediaSource, true, false);
         }
         // handle audio focus
