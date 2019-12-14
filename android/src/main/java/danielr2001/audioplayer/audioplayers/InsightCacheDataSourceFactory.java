@@ -14,6 +14,7 @@ import com.google.android.exoplayer2.upstream.cache.SimpleCache;
 import com.google.android.exoplayer2.util.Util;
 
 import java.io.File;
+import java.util.concurrent.TimeUnit;
 
 import okhttp3.OkHttpClient;
 
@@ -38,7 +39,13 @@ class InsightCacheDataSourceFactory implements DataSource.Factory {
 
     @Override
     public DataSource createDataSource() {
-        DataSource.Factory httpDataSourceFactory = new OkHttpDataSourceFactory(new OkHttpClient()
+
+        OkHttpClient okHttpClient = new OkHttpClient.Builder()
+                .readTimeout(20, TimeUnit.SECONDS)
+                .connectTimeout(20, TimeUnit.SECONDS)
+                .build();
+
+        DataSource.Factory httpDataSourceFactory = new OkHttpDataSourceFactory(okHttpClient
                 , Util.getUserAgent(context, "exoPlayerLibrary"));
         return new CacheDataSource(cache,
                 httpDataSourceFactory.createDataSource(),
