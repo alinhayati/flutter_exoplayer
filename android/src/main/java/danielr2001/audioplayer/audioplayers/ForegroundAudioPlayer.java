@@ -554,11 +554,14 @@ public class ForegroundAudioPlayer extends Service implements AudioPlayer {
                     }
                     case Player.STATE_IDLE: {
                         // stopped
-                        playing = false;
+                        /*playing = false;
                         stopped = true;
                         completed = false;
                         buffering = false;
-                        ref.handleStateChange(foregroundAudioPlayer, PlayerState.STOPPED);
+                        ref.handleStateChange(foregroundAudioPlayer, PlayerState.STOPPED);*/
+                        buffering = true;
+                        playing = false;
+                        ref.handleStateChange(foregroundAudioPlayer, PlayerState.BUFFERING);
 
                         break;
                     } // handle of released is in release method!
