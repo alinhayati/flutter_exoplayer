@@ -398,12 +398,10 @@ public class BackgroundAudioPlayer implements AudioPlayer {
                         break;
                     }
                     case Player.STATE_IDLE: {
-                        // stopped
+                        // unable to fetch data packet from URL
+                        buffering = true;
                         playing = false;
-                        stopped = true;
-                        completed = false;
-                        buffering = false;
-                        ref.handleStateChange(backgroundAudioPlayer, PlayerState.STOPPED);
+                        ref.handleStateChange(backgroundAudioPlayer, PlayerState.IDLE);
                         break;
                     }
                     // handle of released is in release method!

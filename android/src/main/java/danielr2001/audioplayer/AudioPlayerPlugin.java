@@ -419,6 +419,10 @@ public class AudioPlayerPlugin implements MethodCallHandler {
         channel.invokeMethod("audio.onStateChanged",buildArguments(audioplayer.getPlayerId(), 4));
         break;
       }
+      case IDLE: { // 5
+        channel.invokeMethod("audio.onStateChanged",buildArguments(audioplayer.getPlayerId(), 5));
+        break;
+      }
     }
   }
 
