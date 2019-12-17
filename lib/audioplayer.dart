@@ -10,7 +10,6 @@ enum PlayerState {
   PLAYING,
   PAUSED,
   COMPLETED,
-  IDLE,
 }
 
 enum PlayerMode {
@@ -39,7 +38,6 @@ class AudioPlayer {
     2: PlayerState.PLAYING,
     3: PlayerState.PAUSED,
     4: PlayerState.COMPLETED,
-    5: PlayerState.IDLE,
   };
 
   static const ResultMap = {
