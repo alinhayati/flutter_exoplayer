@@ -7,5 +7,4 @@ public enum PlayerState {
     STOPPED, 
     RELEASED, 
     BUFFERING,
-    IDLE,
   }
