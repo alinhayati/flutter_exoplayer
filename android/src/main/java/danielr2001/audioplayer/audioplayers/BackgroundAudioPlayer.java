@@ -401,6 +401,8 @@ public class BackgroundAudioPlayer implements AudioPlayer {
                         // unable to fetch data packet from URL
                         buffering = true;
                         playing = false;
+                        stopped = false;
+                        completed = false;
                         ref.handleStateChange(backgroundAudioPlayer, PlayerState.BUFFERING);
                         break;
                     }

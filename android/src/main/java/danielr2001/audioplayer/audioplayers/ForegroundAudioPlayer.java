@@ -556,6 +556,8 @@ public class ForegroundAudioPlayer extends Service implements AudioPlayer {
                         // unable to fetch data packet from URL
                         buffering = true;
                         playing = false;
+                        stopped = false;
+                        completed = false;
                         ref.handleStateChange(foregroundAudioPlayer, PlayerState.BUFFERING);
 
                         break;
