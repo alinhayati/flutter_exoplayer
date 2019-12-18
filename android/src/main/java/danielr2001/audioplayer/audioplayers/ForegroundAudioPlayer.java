@@ -553,12 +553,12 @@ public class ForegroundAudioPlayer extends Service implements AudioPlayer {
                         break;
                     }
                     case Player.STATE_IDLE: {
-                        // stopped
+                        // unable to fetch data packet from URL
+                        buffering = true;
                         playing = false;
-                        stopped = true;
+                        stopped = false;
                         completed = false;
-                        buffering = false;
-                        ref.handleStateChange(foregroundAudioPlayer, PlayerState.STOPPED);
+                        ref.handleStateChange(foregroundAudioPlayer, PlayerState.BUFFERING);
 
                         break;
                     } // handle of released is in release method!
