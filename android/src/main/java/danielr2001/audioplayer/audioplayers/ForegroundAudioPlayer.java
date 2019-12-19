@@ -529,8 +529,8 @@ public class ForegroundAudioPlayer extends Service implements AudioPlayer {
                             if (mediaNotificationManager.isShowing()) {
                                 mediaNotificationManager.makeNotification(true);
                             }
-                            ref.handlePositionUpdates();
                             ref.handleStateChange(foregroundAudioPlayer, PlayerState.PLAYING);
+                            ref.handlePositionUpdates();
                         } else if (!playWhenReady) {
                             // paused
                             playing = false;
