@@ -150,6 +150,8 @@ public class BackgroundAudioPlayer implements AudioPlayer {
         if (repeatMode) {
             player.setRepeatMode(player.REPEAT_MODE_ALL);
         }
+        initEventListeners();
+        player.setPlayWhenReady(true);
     }
 
     @Override
@@ -161,8 +163,6 @@ public class BackgroundAudioPlayer implements AudioPlayer {
 
             this.audioObject = audioObject;
             this.initExoPlayer(0);
-            initEventListeners();
-            player.setPlayWhenReady(true);
         }
     }
 
@@ -175,8 +175,6 @@ public class BackgroundAudioPlayer implements AudioPlayer {
 
             this.audioObjects = audioObjects;
             this.initExoPlayer(index);
-            initEventListeners();
-            player.setPlayWhenReady(true);
         }
     }
 
@@ -212,8 +210,6 @@ public class BackgroundAudioPlayer implements AudioPlayer {
             } else {
                 this.stopped = false;
                 this.initExoPlayer(0);
-                initEventListeners();
-                player.setPlayWhenReady(true);
             }
         }
     }
