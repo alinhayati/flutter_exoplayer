@@ -11,6 +11,7 @@ import android.content.Intent;
 import android.net.Uri;
 import android.os.Binder;
 import android.os.Build;
+import android.os.Handler;
 import android.os.IBinder;
 import android.support.v4.media.session.MediaSessionCompat;
 import android.util.Log;
@@ -284,8 +285,14 @@ public class ForegroundAudioPlayer extends Service implements AudioPlayer {
 
             this.audioObject = audioObject;
             this.initExoPlayer(0);
-            initEventListeners();
-            player.setPlayWhenReady(true);
+            final Handler handler = new Handler();
+            handler.postDelayed(new Runnable() {
+                @Override
+                public void run() {
+                    initEventListeners();
+                    player.setPlayWhenReady(true);
+                }
+            }, 5000);
         }
     }
 
