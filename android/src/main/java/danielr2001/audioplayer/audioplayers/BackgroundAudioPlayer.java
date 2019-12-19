@@ -3,6 +3,7 @@ package danielr2001.audioplayer.audioplayers;
 import android.app.Activity;
 import android.content.Context;
 import android.net.Uri;
+import android.os.Handler;
 import android.util.Log;
 import android.view.Surface;
 import android.webkit.URLUtil;
@@ -161,8 +162,13 @@ public class BackgroundAudioPlayer implements AudioPlayer {
 
             this.audioObject = audioObject;
             this.initExoPlayer(0);
-            initEventListeners();
-            player.setPlayWhenReady(true);
+            new Handler().postDelayed(new Runnable() {
+                @Override
+                public void run() {
+                    initEventListeners();
+                    player.setPlayWhenReady(true);
+                }
+            }, 4000);
         }
     }
 
@@ -175,8 +181,13 @@ public class BackgroundAudioPlayer implements AudioPlayer {
 
             this.audioObjects = audioObjects;
             this.initExoPlayer(index);
-            initEventListeners();
-            player.setPlayWhenReady(true);
+            new Handler().postDelayed(new Runnable() {
+                @Override
+                public void run() {
+                    initEventListeners();
+                    player.setPlayWhenReady(true);
+                }
+            }, 4000);
         }
     }
 
@@ -212,8 +223,13 @@ public class BackgroundAudioPlayer implements AudioPlayer {
             } else {
                 this.stopped = false;
                 this.initExoPlayer(0);
-                initEventListeners();
-                player.setPlayWhenReady(true);
+                new Handler().postDelayed(new Runnable() {
+                    @Override
+                    public void run() {
+                        initEventListeners();
+                        player.setPlayWhenReady(true);
+                    }
+                }, 4000);
             }
         }
     }
