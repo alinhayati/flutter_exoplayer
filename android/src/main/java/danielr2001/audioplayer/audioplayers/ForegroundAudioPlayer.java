@@ -231,6 +231,8 @@ public class ForegroundAudioPlayer extends Service implements AudioPlayer {
         }
         player = ExoPlayerFactory.newSimpleInstance(this.context, trackSelector, loadControl);
         player.setForegroundMode(true);
+        initEventListeners();
+        player.setPlayWhenReady(true);
         DataSource.Factory offlineDataSourceFactory = new DefaultDataSourceFactory(this, Util.getUserAgent(this.context, "exoPlayerLibrary"));
         DataSource.Factory onlineDataSourceFactory = new InsightCacheDataSourceFactory(this.context, cache);
         // playlist/single audio load
@@ -285,14 +287,6 @@ public class ForegroundAudioPlayer extends Service implements AudioPlayer {
 
             this.audioObject = audioObject;
             this.initExoPlayer(0);
-
-            new Handler().postDelayed(new Runnable() {
-                @Override
-                public void run() {
-                    initEventListeners();
-                    player.setPlayWhenReady(true);
-                }
-            }, 4000);
         }
     }
 
@@ -305,13 +299,6 @@ public class ForegroundAudioPlayer extends Service implements AudioPlayer {
 
             this.audioObjects = audioObjects;
             this.initExoPlayer(index);
-            new Handler().postDelayed(new Runnable() {
-                @Override
-                public void run() {
-                    initEventListeners();
-                    player.setPlayWhenReady(true);
-                }
-            }, 4000);
         }
     }
 
@@ -348,13 +335,6 @@ public class ForegroundAudioPlayer extends Service implements AudioPlayer {
             } else {
                 this.stopped = false;
                 this.initExoPlayer(0);
-                new Handler().postDelayed(new Runnable() {
-                    @Override
-                    public void run() {
-                        initEventListeners();
-                        player.setPlayWhenReady(true);
-                    }
-                }, 4000);
             }
         }
     }
