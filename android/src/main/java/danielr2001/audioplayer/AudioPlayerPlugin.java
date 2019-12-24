@@ -175,6 +175,10 @@ public class AudioPlayerPlugin implements MethodCallHandler {
               notificationDefaultActions = NotificationDefaultActions.NEXT;
             } else if (notificationDefaultActionsInt == 2){
               notificationDefaultActions = NotificationDefaultActions.PREVIOUS;
+            } else if (notificationDefaultActionsInt == 3){
+              notificationDefaultActions = NotificationDefaultActions.FORWARD;
+            } else if (notificationDefaultActionsInt == 4){
+              notificationDefaultActions = NotificationDefaultActions.BACKWARD;
             }else{
               notificationDefaultActions = NotificationDefaultActions.ALL;
             }
@@ -253,6 +257,10 @@ public class AudioPlayerPlugin implements MethodCallHandler {
                 notificationDefaultActions = NotificationDefaultActions.NEXT;
               } else if (notificationDefaultActionsInts.get(i) == 2){
                 notificationDefaultActions = NotificationDefaultActions.PREVIOUS;
+              } else if (notificationDefaultActionsInts.get(i) == 4){
+                notificationDefaultActions = NotificationDefaultActions.FORWARD;
+              } else if (notificationDefaultActionsInts.get(i) == 5){
+                notificationDefaultActions = NotificationDefaultActions.BACKWARD;
               }else{
                 notificationDefaultActions = NotificationDefaultActions.ALL;
               }
@@ -381,6 +389,12 @@ public class AudioPlayerPlugin implements MethodCallHandler {
           break;
         case CUSTOM2:
           channel.invokeMethod("audio.onNotificationActionCallback",buildArguments(audioplayer.getPlayerId(), 5));  
+          break;
+        case FORWARD:
+          channel.invokeMethod("audio.onNotificationActionCallback",buildArguments(audioplayer.getPlayerId(), 6));
+          break;
+        case BACKWARD:
+          channel.invokeMethod("audio.onNotificationActionCallback",buildArguments(audioplayer.getPlayerId(), 7));
           break;
       }
   }
