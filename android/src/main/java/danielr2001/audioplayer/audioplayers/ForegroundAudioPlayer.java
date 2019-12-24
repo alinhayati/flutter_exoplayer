@@ -160,7 +160,10 @@ public class ForegroundAudioPlayer extends Service implements AudioPlayer {
                     break;
                 case MediaNotificationManager.REWIND_ACTION:
                     if (currentAudioObject.getNotificationActionCallbackMode() == NotificationActionCallbackMode.DEFAULT) {
-                        seekPosition(15);
+                        long currentTime = getCurrentPosition();
+                        seekPosition(currentTime - 15 < 0
+                                ? 0
+                                : (int)(currentTime - 15));
                     } else {
                         ref.handleNotificationActionCallback(this.foregroundAudioPlayer,
                                 NotificationActionName.REWIND);
@@ -168,7 +171,11 @@ public class ForegroundAudioPlayer extends Service implements AudioPlayer {
                     break;
                 case MediaNotificationManager.FAST_FORWARD_ACTION:
                     if (currentAudioObject.getNotificationActionCallbackMode() == NotificationActionCallbackMode.DEFAULT) {
-                        seekPosition(15);
+                        long currentTime = getCurrentPosition();
+                        long duration = getDuration();
+                        seekPosition(currentTime + 15 > duration
+                                ? (int)duration
+                                : (int)(currentTime + 15));
                     } else {
                         ref.handleNotificationActionCallback(this.foregroundAudioPlayer,
                                 NotificationActionName.FAST_FORWARD);
