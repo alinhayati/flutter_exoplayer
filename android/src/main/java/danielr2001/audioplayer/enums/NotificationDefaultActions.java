@@ -5,4 +5,6 @@ public enum NotificationDefaultActions {
     NEXT,
     PREVIOUS,
     ALL,
+    REWIND,
+    FAST_FORWARD
 }
