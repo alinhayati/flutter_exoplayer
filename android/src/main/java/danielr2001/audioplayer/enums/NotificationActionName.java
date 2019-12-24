@@ -7,4 +7,6 @@ public enum NotificationActionName {
     PAUSE,
     CUSTOM1,
     CUSTOM2,
+    FAST_FORWARD,
+    REWIND
 }

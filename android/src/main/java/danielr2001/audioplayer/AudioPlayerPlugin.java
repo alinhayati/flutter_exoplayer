@@ -382,6 +382,13 @@ public class AudioPlayerPlugin implements MethodCallHandler {
         case CUSTOM2:
           channel.invokeMethod("audio.onNotificationActionCallback",buildArguments(audioplayer.getPlayerId(), 5));  
           break;
+        case REWIND:
+          channel.invokeMethod("audio.onNotificationActionCallback",buildArguments(audioplayer.getPlayerId(), 6));
+          break;
+        case FAST_FORWARD:
+          channel.invokeMethod("audio.onNotificationActionCallback",buildArguments(audioplayer.getPlayerId(), 7));
+          break;
+
       }
   }
 

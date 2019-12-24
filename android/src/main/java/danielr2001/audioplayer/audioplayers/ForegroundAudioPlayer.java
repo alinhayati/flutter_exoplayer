@@ -158,6 +158,22 @@ public class ForegroundAudioPlayer extends Service implements AudioPlayer {
                     ref.handleNotificationActionCallback(this.foregroundAudioPlayer,
                             NotificationActionName.CUSTOM2);
                     break;
+                case MediaNotificationManager.REWIND_ACTION:
+                    if (currentAudioObject.getNotificationActionCallbackMode() == NotificationActionCallbackMode.DEFAULT) {
+                        seekPosition(15);
+                    } else {
+                        ref.handleNotificationActionCallback(this.foregroundAudioPlayer,
+                                NotificationActionName.REWIND);
+                    }
+                    break;
+                case MediaNotificationManager.FAST_FORWARD_ACTION:
+                    if (currentAudioObject.getNotificationActionCallbackMode() == NotificationActionCallbackMode.DEFAULT) {
+                        seekPosition(15);
+                    } else {
+                        ref.handleNotificationActionCallback(this.foregroundAudioPlayer,
+                                NotificationActionName.FAST_FORWARD);
+                    }
+                    break;
             }
         }
         return START_STICKY;
