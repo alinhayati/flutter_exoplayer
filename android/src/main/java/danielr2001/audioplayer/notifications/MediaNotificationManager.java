@@ -1,12 +1,5 @@
 package danielr2001.audioplayer.notifications;
 
-import danielr2001.audioplayer.audioplayers.ForegroundAudioPlayer;
-import danielr2001.audioplayer.enums.NotificationDefaultActions;
-import danielr2001.audioplayer.enums.NotificationCustomActions;
-import danielr2001.audioplayer.interfaces.AsyncResponse;
-import danielr2001.audioplayer.R;
-import danielr2001.audioplayer.models.AudioObject;
-
 import android.app.Activity;
 import android.app.Notification;
 import android.app.NotificationChannel;
@@ -22,6 +15,13 @@ import android.util.Log;
 import androidx.core.app.NotificationCompat;
 
 import java.util.Map;
+
+import danielr2001.audioplayer.R;
+import danielr2001.audioplayer.audioplayers.ForegroundAudioPlayer;
+import danielr2001.audioplayer.enums.NotificationCustomActions;
+import danielr2001.audioplayer.enums.NotificationDefaultActions;
+import danielr2001.audioplayer.interfaces.AsyncResponse;
+import danielr2001.audioplayer.models.AudioObject;
 
 public class MediaNotificationManager {
     public static final String PLAY_ACTION = "com.daniel.exoPlayer.action.play";

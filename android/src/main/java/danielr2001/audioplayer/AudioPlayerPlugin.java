@@ -1,25 +1,13 @@
 package danielr2001.audioplayer;
 
-import danielr2001.audioplayer.audioplayers.ForegroundAudioPlayer;
-import danielr2001.audioplayer.audioplayers.BackgroundAudioPlayer;
-import danielr2001.audioplayer.interfaces.AudioPlayer;
-import danielr2001.audioplayer.models.AudioObject;
-import danielr2001.audioplayer.enums.NotificationDefaultActions;
-import danielr2001.audioplayer.enums.NotificationCustomActions;
-import danielr2001.audioplayer.enums.NotificationActionName;
-import danielr2001.audioplayer.enums.NotificationActionCallbackMode;
-import danielr2001.audioplayer.enums.PlayerState;
-import danielr2001.audioplayer.enums.PlayerMode;
-
 import android.app.Activity;
 import android.app.ActivityManager;
-import android.os.Handler;
-import android.os.Build;
-import android.os.IBinder;
-import android.content.ServiceConnection;
+import android.content.ComponentName;
 import android.content.Context;
 import android.content.Intent;
-import android.content.ComponentName;
+import android.content.ServiceConnection;
+import android.os.Handler;
+import android.os.IBinder;
 import android.util.Log;
 
 import androidx.core.content.ContextCompat;
@@ -31,6 +19,16 @@ import java.util.Map;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
+import danielr2001.audioplayer.audioplayers.BackgroundAudioPlayer;
+import danielr2001.audioplayer.audioplayers.ForegroundAudioPlayer;
+import danielr2001.audioplayer.enums.NotificationActionCallbackMode;
+import danielr2001.audioplayer.enums.NotificationActionName;
+import danielr2001.audioplayer.enums.NotificationCustomActions;
+import danielr2001.audioplayer.enums.NotificationDefaultActions;
+import danielr2001.audioplayer.enums.PlayerMode;
+import danielr2001.audioplayer.enums.PlayerState;
+import danielr2001.audioplayer.interfaces.AudioPlayer;
+import danielr2001.audioplayer.models.AudioObject;
 import io.flutter.plugin.common.MethodCall;
 import io.flutter.plugin.common.MethodChannel;
 import io.flutter.plugin.common.MethodChannel.MethodCallHandler;
