@@ -102,7 +102,7 @@ public class ForegroundAudioPlayer extends Service implements AudioPlayer {
         // ! TODO handle MediaButtonReceiver's callbacks
         // MediaButtonReceiver.handleIntent(mediaSession, intent);
         // mediaSession.setCallback(mediaSessionCallback);
-        if (intent.getAction() != null) {
+        if (intent != null && intent.getAction() != null) {
             AudioObject currentAudioObject;
             if (this.playerMode == PlayerMode.PLAYLIST) {
                 currentAudioObject = this.audioObjects.get(player.getCurrentWindowIndex());

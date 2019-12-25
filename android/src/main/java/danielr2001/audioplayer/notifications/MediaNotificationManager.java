@@ -249,6 +249,7 @@ public class MediaNotificationManager {
         if(audioObject.getNotificationCustomActions() == NotificationCustomActions.TWO){
             builder.addAction(customIcon2, "Custom2", pCustomIntent2);
         }
+
         return builder;
     }
 
