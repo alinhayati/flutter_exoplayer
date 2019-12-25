@@ -1,12 +1,5 @@
 package danielr2001.audioplayer.notifications;
 
-import danielr2001.audioplayer.audioplayers.ForegroundAudioPlayer;
-import danielr2001.audioplayer.enums.NotificationDefaultActions;
-import danielr2001.audioplayer.enums.NotificationCustomActions;
-import danielr2001.audioplayer.interfaces.AsyncResponse;
-import danielr2001.audioplayer.R;
-import danielr2001.audioplayer.models.AudioObject;
-
 import android.app.Activity;
 import android.app.Notification;
 import android.app.NotificationChannel;
@@ -23,6 +16,13 @@ import androidx.core.app.NotificationCompat;
 
 import java.util.Map;
 
+import danielr2001.audioplayer.R;
+import danielr2001.audioplayer.audioplayers.ForegroundAudioPlayer;
+import danielr2001.audioplayer.enums.NotificationCustomActions;
+import danielr2001.audioplayer.enums.NotificationDefaultActions;
+import danielr2001.audioplayer.interfaces.AsyncResponse;
+import danielr2001.audioplayer.models.AudioObject;
+
 public class MediaNotificationManager {
     public static final String PLAY_ACTION = "com.daniel.exoPlayer.action.play";
     public static final String PAUSE_ACTION = "com.daniel.exoPlayer.action.pause";
@@ -32,8 +32,8 @@ public class MediaNotificationManager {
     public static final String CUSTOM2_ACTION = "com.daniel.exoPlayer.action.custom2";
     public static final String FORWARD_ACTION = "com.daniel.exoPlayer.action.forward";
     public static final String BACKWARD_ACTION = "com.daniel.exoPlayer.action.backward";
-    private static final int NOTIFICATION_ID = 1;
-    private static final String CHANNEL_ID = "Playback";
+    public static final int NOTIFICATION_ID = 1;
+    public static final String CHANNEL_ID = "Playback";
 
     private ForegroundAudioPlayer foregroundExoPlayer;
     private Context context;
