@@ -401,6 +401,7 @@ public class ForegroundAudioPlayer extends Service implements AudioPlayer {
     public void seekPosition(int position) {
         if (!this.released) {
             player.seekTo(player.getCurrentWindowIndex(), position);
+            player.setPlayWhenReady(true);
         }
     }
 
