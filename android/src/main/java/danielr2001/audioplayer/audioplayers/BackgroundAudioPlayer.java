@@ -248,6 +248,7 @@ public class BackgroundAudioPlayer implements AudioPlayer {
     public void seekPosition(int position) {
         if (!this.released) {
             player.seekTo(player.getCurrentWindowIndex(), position);
+            player.setPlayWhenReady(true);
         }
     }
 
