@@ -230,7 +230,7 @@ public class ForegroundAudioPlayer extends Service implements AudioPlayer {
 
         this.playerId = playerId;
         this.ref = ref;
-        this.mediaNotificationManager = new MediaNotificationManager(this, this.context,
+        this.mediaNotificationManager = new MediaNotificationManager(this, this,
                 this.mediaSession, activity);
         this.foregroundAudioPlayer = this;
     }
