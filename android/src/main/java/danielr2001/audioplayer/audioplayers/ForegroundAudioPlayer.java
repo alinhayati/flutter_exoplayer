@@ -181,8 +181,10 @@ public class ForegroundAudioPlayer extends Service implements AudioPlayer {
                             NotificationActionName.CUSTOM2);
                     break;
             }
+            return START_STICKY;
+        }else{
+            return START_REDELIVER_INTENT;
         }
-        return START_STICKY;
     }
 
     @Override
