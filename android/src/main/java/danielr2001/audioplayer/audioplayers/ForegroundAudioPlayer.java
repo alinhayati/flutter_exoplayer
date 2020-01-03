@@ -53,6 +53,7 @@ import java.io.IOException;
 import java.util.ArrayList;
 
 import danielr2001.audioplayer.AudioPlayerPlugin;
+import danielr2001.audioplayer.R;
 import danielr2001.audioplayer.enums.NotificationActionCallbackMode;
 import danielr2001.audioplayer.enums.NotificationActionName;
 import danielr2001.audioplayer.enums.PlayerMode;
@@ -97,6 +98,7 @@ public class ForegroundAudioPlayer extends Service implements AudioPlayer {
     @Override
     public int onStartCommand(Intent intent, int flags, int startId) {
         this.context = getApplicationContext();
+        createTempNotificationWhileInitializingPlayer();
         mediaSession = new MediaSessionCompat(this.context, "playback");
         // ! TODO handle MediaButtonReceiver's callbacks
         // MediaButtonReceiver.handleIntent(mediaSession, intent);
@@ -108,7 +110,6 @@ public class ForegroundAudioPlayer extends Service implements AudioPlayer {
             } else {
                 currentAudioObject = this.audioObject;
             }
-            createTempNotificationWhileInitializingPlayer(currentAudioObject.getSmallIconFileName());
 
             switch (intent.getAction()) {
                 case MediaNotificationManager.PREVIOUS_ACTION:
@@ -192,21 +193,18 @@ public class ForegroundAudioPlayer extends Service implements AudioPlayer {
         this.release();
     }
 
-    private void createTempNotificationWhileInitializingPlayer(String smallIconFileName) {
+    private void createTempNotificationWhileInitializingPlayer() {
         createNotificationChannel();
         Intent notificationIntent = new Intent(this, this.getClass());
         PendingIntent pendingIntent = PendingIntent.getActivity(this,
                 0, notificationIntent, 0);
-
-        int icon = this.context.getResources().getIdentifier(smallIconFileName, "drawable",
-                this.context.getPackageName());
 
         Notification notification = new NotificationCompat.Builder(this, MediaNotificationManager.CHANNEL_ID)
                 .setContentTitle("Initializing Audio Player")
                 .setContentIntent(pendingIntent)
                 .setSound(null)
                 .setColorized(true)
-                .setSmallIcon(icon)
+                .setSmallIcon(R.drawable.ic_notification)
                 .setVibrate(null)
                 .build();
 
