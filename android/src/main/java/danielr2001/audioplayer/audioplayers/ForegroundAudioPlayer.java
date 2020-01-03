@@ -97,7 +97,6 @@ public class ForegroundAudioPlayer extends Service implements AudioPlayer {
     @Override
     public int onStartCommand(Intent intent, int flags, int startId) {
         this.context = getApplicationContext();
-        createTempNotificationWhileInitializingPlayer();
         mediaSession = new MediaSessionCompat(this.context, "playback");
         // ! TODO handle MediaButtonReceiver's callbacks
         // MediaButtonReceiver.handleIntent(mediaSession, intent);
@@ -109,6 +108,8 @@ public class ForegroundAudioPlayer extends Service implements AudioPlayer {
             } else {
                 currentAudioObject = this.audioObject;
             }
+            createTempNotificationWhileInitializingPlayer(currentAudioObject.getSmallIconFileName());
+
             switch (intent.getAction()) {
                 case MediaNotificationManager.PREVIOUS_ACTION:
                     if (currentAudioObject.getNotificationActionCallbackMode() == NotificationActionCallbackMode.DEFAULT) {
@@ -191,16 +192,21 @@ public class ForegroundAudioPlayer extends Service implements AudioPlayer {
         this.release();
     }
 
-    private void createTempNotificationWhileInitializingPlayer() {
+    private void createTempNotificationWhileInitializingPlayer(String smallIconFileName) {
         createNotificationChannel();
         Intent notificationIntent = new Intent(this, this.getClass());
         PendingIntent pendingIntent = PendingIntent.getActivity(this,
                 0, notificationIntent, 0);
 
+        int icon = this.context.getResources().getIdentifier(smallIconFileName, "drawable",
+                this.context.getPackageName());
+
         Notification notification = new NotificationCompat.Builder(this, MediaNotificationManager.CHANNEL_ID)
                 .setContentTitle("Initializing Audio Player")
                 .setContentIntent(pendingIntent)
                 .setSound(null)
+                .setColorized(true)
+                .setSmallIcon(icon)
                 .setVibrate(null)
                 .build();
 
