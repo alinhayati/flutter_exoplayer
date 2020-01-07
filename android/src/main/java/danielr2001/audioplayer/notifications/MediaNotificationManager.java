@@ -154,12 +154,10 @@ public class MediaNotificationManager {
 
     private void showNotification() {
         Notification notification;
-        int icon = this.context.getResources().getIdentifier(audioObject.getSmallIconFileName(), "drawable",
-                this.context.getPackageName());
 
                 notificationManager = initNotificationManager();
         NotificationCompat.Builder builder = new NotificationCompat.Builder(this.context, CHANNEL_ID)
-                .setSmallIcon(icon)
+                .setSmallIcon(R.drawable.ic_notification)
                 .setWhen(System.currentTimeMillis())
                 .setShowWhen(false)
                 .setColorized(true)
