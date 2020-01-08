@@ -53,6 +53,7 @@ import java.io.IOException;
 import java.util.ArrayList;
 
 import danielr2001.audioplayer.AudioPlayerPlugin;
+import danielr2001.audioplayer.R;
 import danielr2001.audioplayer.enums.NotificationActionCallbackMode;
 import danielr2001.audioplayer.enums.NotificationActionName;
 import danielr2001.audioplayer.enums.PlayerMode;
@@ -109,6 +110,7 @@ public class ForegroundAudioPlayer extends Service implements AudioPlayer {
             } else {
                 currentAudioObject = this.audioObject;
             }
+
             switch (intent.getAction()) {
                 case MediaNotificationManager.PREVIOUS_ACTION:
                     if (currentAudioObject.getNotificationActionCallbackMode() == NotificationActionCallbackMode.DEFAULT) {
@@ -203,6 +205,8 @@ public class ForegroundAudioPlayer extends Service implements AudioPlayer {
                 .setContentTitle("Initializing Audio Player")
                 .setContentIntent(pendingIntent)
                 .setSound(null)
+                .setColorized(true)
+                .setSmallIcon(R.drawable.ic_notification)
                 .setVibrate(null)
                 .build();
 
