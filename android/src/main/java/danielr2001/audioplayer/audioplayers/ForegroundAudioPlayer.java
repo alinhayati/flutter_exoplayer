@@ -181,8 +181,10 @@ public class ForegroundAudioPlayer extends Service implements AudioPlayer {
                             NotificationActionName.CUSTOM2);
                     break;
             }
+            return START_STICKY;
+        }else{
+            return START_REDELIVER_INTENT;
         }
-        return START_STICKY;
     }
 
     @Override
@@ -228,7 +230,7 @@ public class ForegroundAudioPlayer extends Service implements AudioPlayer {
 
         this.playerId = playerId;
         this.ref = ref;
-        this.mediaNotificationManager = new MediaNotificationManager(this, this.context,
+        this.mediaNotificationManager = new MediaNotificationManager(this, this,
                 this.mediaSession, activity);
         this.foregroundAudioPlayer = this;
     }
