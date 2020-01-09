@@ -165,6 +165,8 @@ public class MediaNotificationManager {
                 .setSound(null)
                 .setContentIntent(pNotificatioIntent);
 
+        builder.setSubText("00");
+
         if (audioObject.getTitle() != null) {
             builder.setContentTitle(audioObject.getTitle());
         }
@@ -296,6 +298,8 @@ public class MediaNotificationManager {
     }
 
     public static void UpdateDurations(String duration) {
-        builder.setSubText(duration);
+        if(builder !=null) {
+            builder.setSubText(duration);
+        }
     }
 }
