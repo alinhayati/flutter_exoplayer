@@ -15,6 +15,7 @@ import androidx.core.content.ContextCompat;
 import java.lang.ref.WeakReference;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.Locale;
 import java.util.Map;
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -29,6 +30,7 @@ import danielr2001.audioplayer.enums.PlayerMode;
 import danielr2001.audioplayer.enums.PlayerState;
 import danielr2001.audioplayer.interfaces.AudioPlayer;
 import danielr2001.audioplayer.models.AudioObject;
+import danielr2001.audioplayer.notifications.MediaNotificationManager;
 import io.flutter.plugin.common.MethodCall;
 import io.flutter.plugin.common.MethodChannel;
 import io.flutter.plugin.common.MethodChannel.MethodCallHandler;
@@ -534,7 +536,8 @@ public class AudioPlayerPlugin implements MethodCallHandler {
           try {
             nonePlaying = false;
             channel.invokeMethod("audio.onDurationChanged",buildArguments(player.getPlayerId(), player.getDuration()));
-            channel.invokeMethod("audio.onCurrentPositionChanged", buildArguments(player.getPlayerId(), player.getCurrentPosition())); 
+            channel.invokeMethod("audio.onCurrentPositionChanged", buildArguments(player.getPlayerId(), player.getCurrentPosition()));
+            MediaNotificationManager.UpdateDurations(durationFormat(player.getCurrentPosition()));
           } catch(UnsupportedOperationException e) {
             Log.e("AudioPlayerPlugin", "Error when updating position and duration");
           }
@@ -546,5 +549,15 @@ public class AudioPlayerPlugin implements MethodCallHandler {
           handler.postDelayed(this, 200);
       }
     }
+  }
+
+  static String durationFormat(long duration) {
+    int seconds = (int) (duration / 1000) % 60 ;
+    int minutes = (int) ((duration / (1000*60)) % 60);
+    int hours   = (int) ((duration / (1000*60*60)) % 24);
+    if(hours > 0) {
+      return String.format(Locale.ENGLISH,"%02d:%02d:%02d", hours, minutes, seconds);
+    }
+    return String.format(Locale.ENGLISH,"%02d:%02d", minutes, seconds);
   }
 }

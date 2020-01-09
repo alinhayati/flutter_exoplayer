@@ -34,6 +34,7 @@ public class MediaNotificationManager {
     public static final String BACKWARD_ACTION = "com.daniel.exoPlayer.action.backward";
     public static final int NOTIFICATION_ID = 1;
     public static final String CHANNEL_ID = "Playback";
+    public static NotificationCompat.Builder builder;
 
     private ForegroundAudioPlayer foregroundExoPlayer;
     private Context context;
@@ -156,7 +157,7 @@ public class MediaNotificationManager {
         Notification notification;
 
                 notificationManager = initNotificationManager();
-        NotificationCompat.Builder builder = new NotificationCompat.Builder(this.context, CHANNEL_ID)
+        builder = new NotificationCompat.Builder(this.context, CHANNEL_ID)
                 .setSmallIcon(R.drawable.ic_notification)
                 .setWhen(System.currentTimeMillis())
                 .setShowWhen(false)
@@ -292,5 +293,9 @@ public class MediaNotificationManager {
         } catch (Exception e) {
             Log.e("ExoPlayerPlugin", "Failed loading image!");
         }
+    }
+
+    public static void UpdateDurations(String duration) {
+        builder.setSubText(duration);
     }
 }
