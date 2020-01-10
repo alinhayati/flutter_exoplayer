@@ -153,8 +153,12 @@ public class MediaNotificationManager implements AudioPlayerPlugin.UpdateDuratio
     //update current notification
     public void makeNotification(boolean isPlaying) {
         this.isPlaying = isPlaying;
-        showNotification();
-
+        if (this.isPlaying) {
+            builder.addAction(R.drawable.ic_pause, "Pause", pPauseIntent);
+        } else {
+            builder.addAction(R.drawable.ic_play, "Play", ppPlayIntent);
+        }
+        notificationManager.notify(NOTIFICATION_ID, builder.build());
     }
 
     private void showNotification() {
