@@ -371,7 +371,7 @@ public class MediaNotificationManager implements AudioPlayerPlugin.UpdateDuratio
         DURATIONS = durationFormat(duration);
         if(builder != null && notificationManager != null) {
             builder.setSubText(DURATIONS);
-            builder.setProgress((int)totalDurations,(int)duration, false);
+            //builder.setProgress((int)totalDurations,(int)duration, false);
             notificationManager.notify(NOTIFICATION_ID, builder.build());
         }
     }
