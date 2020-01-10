@@ -62,6 +62,7 @@ public class AudioPlayerPlugin implements MethodCallHandler {
   private boolean tempRespectAudioFocus;
   private AudioPlayerPlugin tempAudioPlayerPlugin;
   private int tempIndex;
+  public static UpdateDurations updateDurations;
 
   private ServiceConnection connection = new ServiceConnection() {
 
@@ -537,7 +538,7 @@ public class AudioPlayerPlugin implements MethodCallHandler {
             nonePlaying = false;
             channel.invokeMethod("audio.onDurationChanged",buildArguments(player.getPlayerId(), player.getDuration()));
             channel.invokeMethod("audio.onCurrentPositionChanged", buildArguments(player.getPlayerId(), player.getCurrentPosition()));
-            MediaNotificationManager.UpdateDurations(durationFormat(player.getCurrentPosition()));
+            updateDurations.fetchDurations(player.getDuration(),player.getCurrentPosition());
           } catch(UnsupportedOperationException e) {
             Log.e("AudioPlayerPlugin", "Error when updating position and duration");
           }
@@ -551,13 +552,7 @@ public class AudioPlayerPlugin implements MethodCallHandler {
     }
   }
 
-  static String durationFormat(long duration) {
-    int seconds = (int) (duration / 1000) % 60 ;
-    int minutes = (int) ((duration / (1000*60)) % 60);
-    int hours   = (int) ((duration / (1000*60*60)) % 24);
-    if(hours > 0) {
-      return String.format(Locale.ENGLISH,"%02d:%02d:%02d", hours, minutes, seconds);
-    }
-    return String.format(Locale.ENGLISH,"%02d:%02d", minutes, seconds);
+  public interface UpdateDurations{
+    void fetchDurations(long totalDurations, long duration);
   }
 }

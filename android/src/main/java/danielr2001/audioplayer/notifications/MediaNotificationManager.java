@@ -14,8 +14,10 @@ import android.util.Log;
 
 import androidx.core.app.NotificationCompat;
 
+import java.util.Locale;
 import java.util.Map;
 
+import danielr2001.audioplayer.AudioPlayerPlugin;
 import danielr2001.audioplayer.R;
 import danielr2001.audioplayer.audioplayers.ForegroundAudioPlayer;
 import danielr2001.audioplayer.enums.NotificationCustomActions;
@@ -23,7 +25,7 @@ import danielr2001.audioplayer.enums.NotificationDefaultActions;
 import danielr2001.audioplayer.interfaces.AsyncResponse;
 import danielr2001.audioplayer.models.AudioObject;
 
-public class MediaNotificationManager {
+public class MediaNotificationManager implements AudioPlayerPlugin.UpdateDurations {
     public static final String PLAY_ACTION = "com.daniel.exoPlayer.action.play";
     public static final String PAUSE_ACTION = "com.daniel.exoPlayer.action.pause";
     public static final String PREVIOUS_ACTION = "com.daniel.exoPlayer.action.previous";
@@ -34,13 +36,15 @@ public class MediaNotificationManager {
     public static final String BACKWARD_ACTION = "com.daniel.exoPlayer.action.backward";
     public static final int NOTIFICATION_ID = 1;
     public static final String CHANNEL_ID = "Playback";
-    public static NotificationCompat.Builder builder;
 
     private ForegroundAudioPlayer foregroundExoPlayer;
     private Context context;
     private Activity activity;
 
     private NotificationManager notificationManager;
+    private NotificationCompat.Builder builder;
+    private String DURATIONS = "00:00";
+
     private MediaSessionCompat mediaSession;
 
     private Intent playIntent;
@@ -165,7 +169,8 @@ public class MediaNotificationManager {
                 .setSound(null)
                 .setContentIntent(pNotificatioIntent);
 
-        builder.setSubText("00");
+        builder.setSubText(DURATIONS);
+        builder.setOngoing(true);
 
         if (audioObject.getTitle() != null) {
             builder.setContentTitle(audioObject.getTitle());
@@ -184,6 +189,8 @@ public class MediaNotificationManager {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             builder = initNotificationStyle(builder);
         }
+
+        AudioPlayerPlugin.updateDurations = this;
 
         notification = builder.build();
 
@@ -297,9 +304,23 @@ public class MediaNotificationManager {
         }
     }
 
-    public static void UpdateDurations(String duration) {
-        if(builder !=null) {
-            builder.setSubText(duration);
+    private String durationFormat(long duration) {
+        int seconds = (int) (duration / 1000) % 60 ;
+        int minutes = (int) ((duration / (1000*60)) % 60);
+        int hours   = (int) ((duration / (1000*60*60)) % 24);
+        if(hours > 0) {
+            return String.format(Locale.ENGLISH,"%02d:%02d:%02d", hours, minutes, seconds);
+        }
+        return String.format(Locale.ENGLISH,"%02d:%02d", minutes, seconds);
+    }
+
+    @Override
+    public void fetchDurations(long totalDurations, long duration) {
+        DURATIONS = durationFormat(duration);
+        if(builder != null && notificationManager != null) {
+            builder.setSubText(DURATIONS);
+            builder.setProgress((int)totalDurations,(int)duration, false);
+            notificationManager.notify(NOTIFICATION_ID, builder.build());
         }
     }
 }
