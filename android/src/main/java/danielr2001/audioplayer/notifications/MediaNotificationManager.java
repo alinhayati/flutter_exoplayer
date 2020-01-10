@@ -158,6 +158,14 @@ public class MediaNotificationManager implements AudioPlayerPlugin.UpdateDuratio
         } else {
             builder.addAction(R.drawable.ic_play, "Play", ppPlayIntent);
         }
+        if(!this.isPlaying){
+            builder.setTimeoutAfter(900000);
+        }
+        if(this.isPlaying){
+            foregroundExoPlayer.startForeground(NOTIFICATION_ID, builder.build());
+        }else{
+            foregroundExoPlayer.stopForeground(false);
+        }
         notificationManager.notify(NOTIFICATION_ID, builder.build());
     }
 
