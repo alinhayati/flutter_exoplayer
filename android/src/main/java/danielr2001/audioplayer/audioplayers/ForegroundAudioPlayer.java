@@ -98,7 +98,11 @@ public class ForegroundAudioPlayer extends Service implements AudioPlayer {
     @Override
     public int onStartCommand(Intent intent, int flags, int startId) {
         this.context = getApplicationContext();
-        createTempNotificationWhileInitializingPlayer();
+        if (mediaNotificationManager == null) {
+            createTempNotificationWhileInitializingPlayer();
+        } else if(!mediaNotificationManager.isShowing()) {
+            createTempNotificationWhileInitializingPlayer();
+        }
         mediaSession = new MediaSessionCompat(this.context, "playback");
         // ! TODO handle MediaButtonReceiver's callbacks
         // MediaButtonReceiver.handleIntent(mediaSession, intent);

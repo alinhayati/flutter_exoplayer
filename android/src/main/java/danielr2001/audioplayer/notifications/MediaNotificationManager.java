@@ -1,5 +1,6 @@
 package danielr2001.audioplayer.notifications;
 
+import android.annotation.SuppressLint;
 import android.app.Activity;
 import android.app.Notification;
 import android.app.NotificationChannel;
@@ -153,20 +154,59 @@ public class MediaNotificationManager implements AudioPlayerPlugin.UpdateDuratio
     //update current notification
     public void makeNotification(boolean isPlaying) {
         this.isPlaying = isPlaying;
+        if(notificationManager != null) {
+            builder = updateNotificationsActions(builder);
+            notificationManager.notify(NOTIFICATION_ID, builder.build());
+        }
+        else {
+            showNotification();
+        }
+    }
+
+    @SuppressLint("RestrictedApi")
+    private NotificationCompat.Builder updateNotificationsActions(NotificationCompat.Builder builder) {
+        builder.mActions.clear();
+        int customIcon1 = this.context.getResources().getIdentifier("ic_custom1", "drawable", //! TODO maybe change to custom file name
+                this.context.getPackageName());
+        int customIcon2 = this.context.getResources().getIdentifier("ic_custom2", "drawable",
+                this.context.getPackageName());
+
+        if(audioObject.getNotificationCustomActions() == NotificationCustomActions.ONE || audioObject.getNotificationCustomActions() == NotificationCustomActions.TWO){
+            builder.addAction(customIcon1, "Custom1", pCustomIntent1);
+        }
+        if (audioObject.getNotificationActionMode() == NotificationDefaultActions.PREVIOUS || audioObject.getNotificationActionMode() == NotificationDefaultActions.ALL) {
+            //builder.addAction(R.drawable.ic_previous, "Previous", pPrevIntent);
+        }
+
+        if (audioObject.getNotificationActionMode() == NotificationDefaultActions.FORWARD ||
+                audioObject.getNotificationActionMode() == NotificationDefaultActions.BACKWARD ||
+                audioObject.getNotificationActionMode() == NotificationDefaultActions.ALL) {
+            builder.addAction(R.drawable.exo_icon_rewind, "Backward", pBackwardIntent);
+        }
+
         if (this.isPlaying) {
             builder.addAction(R.drawable.ic_pause, "Pause", pPauseIntent);
         } else {
             builder.addAction(R.drawable.ic_play, "Play", ppPlayIntent);
         }
+
+        if (audioObject.getNotificationActionMode() == NotificationDefaultActions.FORWARD ||
+                audioObject.getNotificationActionMode() == NotificationDefaultActions.BACKWARD ||
+                audioObject.getNotificationActionMode() == NotificationDefaultActions.ALL) {
+            builder.addAction(R.drawable.exo_icon_fastforward, "Forward", pForwardIntent);
+        }
+
+        if (audioObject.getNotificationActionMode() == NotificationDefaultActions.NEXT || audioObject.getNotificationActionMode() == NotificationDefaultActions.ALL) {
+            //builder.addAction(R.drawable.ic_next, "Next", pNextIntent);
+        }
+        if(audioObject.getNotificationCustomActions() == NotificationCustomActions.TWO){
+            builder.addAction(customIcon2, "Custom2", pCustomIntent2);
+        }
+
         if(!this.isPlaying){
             builder.setTimeoutAfter(900000);
         }
-        if(this.isPlaying){
-            foregroundExoPlayer.startForeground(NOTIFICATION_ID, builder.build());
-        }else{
-            foregroundExoPlayer.stopForeground(false);
-        }
-        notificationManager.notify(NOTIFICATION_ID, builder.build());
+        return builder;
     }
 
     private void showNotification() {
