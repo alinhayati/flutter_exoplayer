@@ -163,7 +163,7 @@ public class MediaNotificationManager implements AudioPlayerPlugin.UpdateDuratio
                     builder = updateNotificationsActions(builder);
                     notificationManager.notify(NOTIFICATION_ID, builder.build());
                 }
-            }, 500);
+            }, 150);
         }
         else {
             showNotification();
