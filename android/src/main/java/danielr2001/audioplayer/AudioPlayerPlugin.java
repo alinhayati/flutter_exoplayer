@@ -60,6 +60,7 @@ public class AudioPlayerPlugin implements MethodCallHandler {
   private boolean tempRespectAudioFocus;
   private AudioPlayerPlugin tempAudioPlayerPlugin;
   private int tempIndex;
+  public static UpdateDurations updateDurations;
 
   private ServiceConnection connection = new ServiceConnection() {
 
@@ -534,7 +535,8 @@ public class AudioPlayerPlugin implements MethodCallHandler {
           try {
             nonePlaying = false;
             channel.invokeMethod("audio.onDurationChanged",buildArguments(player.getPlayerId(), player.getDuration()));
-            channel.invokeMethod("audio.onCurrentPositionChanged", buildArguments(player.getPlayerId(), player.getCurrentPosition())); 
+            channel.invokeMethod("audio.onCurrentPositionChanged", buildArguments(player.getPlayerId(), player.getCurrentPosition()));
+            updateDurations.fetchDurations(player.getDuration(),player.getCurrentPosition());
           } catch(UnsupportedOperationException e) {
             Log.e("AudioPlayerPlugin", "Error when updating position and duration");
           }
@@ -546,5 +548,9 @@ public class AudioPlayerPlugin implements MethodCallHandler {
           handler.postDelayed(this, 200);
       }
     }
+  }
+
+  public interface UpdateDurations{
+    void fetchDurations(long totalDurations, long duration);
   }
 }

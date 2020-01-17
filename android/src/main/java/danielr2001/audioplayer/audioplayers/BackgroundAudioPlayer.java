@@ -126,7 +126,7 @@ public class BackgroundAudioPlayer implements AudioPlayer {
             if (index != 0) {
                 player.seekTo(index, 0);
             }
-        } else {
+        } else if (this.audioObject != null) {
             String url = this.audioObject.getUrl();
             MediaSource mediaSource;
             if (URLUtil.isHttpsUrl(url) || URLUtil.isHttpUrl(url)) {

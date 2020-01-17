@@ -1,5 +1,6 @@
 package danielr2001.audioplayer.notifications;
 
+import android.annotation.SuppressLint;
 import android.app.Activity;
 import android.app.Notification;
 import android.app.NotificationChannel;
@@ -9,13 +10,16 @@ import android.content.Context;
 import android.content.Intent;
 import android.graphics.Bitmap;
 import android.os.Build;
+import android.os.Handler;
 import android.support.v4.media.session.MediaSessionCompat;
 import android.util.Log;
 
 import androidx.core.app.NotificationCompat;
 
+import java.util.Locale;
 import java.util.Map;
 
+import danielr2001.audioplayer.AudioPlayerPlugin;
 import danielr2001.audioplayer.R;
 import danielr2001.audioplayer.audioplayers.ForegroundAudioPlayer;
 import danielr2001.audioplayer.enums.NotificationCustomActions;
@@ -23,7 +27,7 @@ import danielr2001.audioplayer.enums.NotificationDefaultActions;
 import danielr2001.audioplayer.interfaces.AsyncResponse;
 import danielr2001.audioplayer.models.AudioObject;
 
-public class MediaNotificationManager {
+public class MediaNotificationManager implements AudioPlayerPlugin.UpdateDurations {
     public static final String PLAY_ACTION = "com.daniel.exoPlayer.action.play";
     public static final String PAUSE_ACTION = "com.daniel.exoPlayer.action.pause";
     public static final String PREVIOUS_ACTION = "com.daniel.exoPlayer.action.previous";
@@ -40,6 +44,9 @@ public class MediaNotificationManager {
     private Activity activity;
 
     private NotificationManager notificationManager;
+    private NotificationCompat.Builder builder;
+    private String DURATIONS = "00:00";
+
     private MediaSessionCompat mediaSession;
 
     private Intent playIntent;
@@ -148,21 +155,81 @@ public class MediaNotificationManager {
     //update current notification
     public void makeNotification(boolean isPlaying) {
         this.isPlaying = isPlaying;
-        showNotification();
+        if(notificationManager != null) {
+            final Handler handler = new Handler();
+            handler.postDelayed(new Runnable() {
+                @Override
+                public void run() {
+                    builder = updateNotificationsActions(builder);
+                    notificationManager.notify(NOTIFICATION_ID, builder.build());
+                }
+            }, 150);
+        }
+        else {
+            showNotification();
+        }
+    }
 
+    @SuppressLint("RestrictedApi")
+    private NotificationCompat.Builder updateNotificationsActions(NotificationCompat.Builder builder) {
+        builder.mActions.clear();
+        int customIcon1 = this.context.getResources().getIdentifier("ic_custom1", "drawable", //! TODO maybe change to custom file name
+                this.context.getPackageName());
+        int customIcon2 = this.context.getResources().getIdentifier("ic_custom2", "drawable",
+                this.context.getPackageName());
+
+        if(audioObject.getNotificationCustomActions() == NotificationCustomActions.ONE || audioObject.getNotificationCustomActions() == NotificationCustomActions.TWO){
+            builder.addAction(customIcon1, "Custom1", pCustomIntent1);
+        }
+        if (audioObject.getNotificationActionMode() == NotificationDefaultActions.PREVIOUS || audioObject.getNotificationActionMode() == NotificationDefaultActions.ALL) {
+            //builder.addAction(R.drawable.ic_previous, "Previous", pPrevIntent);
+        }
+
+        if (audioObject.getNotificationActionMode() == NotificationDefaultActions.FORWARD ||
+                audioObject.getNotificationActionMode() == NotificationDefaultActions.BACKWARD ||
+                audioObject.getNotificationActionMode() == NotificationDefaultActions.ALL) {
+            builder.addAction(R.drawable.exo_icon_rewind, "Backward", pBackwardIntent);
+        }
+
+        if (this.isPlaying) {
+            builder.addAction(R.drawable.ic_pause, "Pause", pPauseIntent);
+        } else {
+            builder.addAction(R.drawable.ic_play, "Play", ppPlayIntent);
+        }
+
+        if (audioObject.getNotificationActionMode() == NotificationDefaultActions.FORWARD ||
+                audioObject.getNotificationActionMode() == NotificationDefaultActions.BACKWARD ||
+                audioObject.getNotificationActionMode() == NotificationDefaultActions.ALL) {
+            builder.addAction(R.drawable.exo_icon_fastforward, "Forward", pForwardIntent);
+        }
+
+        if (audioObject.getNotificationActionMode() == NotificationDefaultActions.NEXT || audioObject.getNotificationActionMode() == NotificationDefaultActions.ALL) {
+            //builder.addAction(R.drawable.ic_next, "Next", pNextIntent);
+        }
+        if(audioObject.getNotificationCustomActions() == NotificationCustomActions.TWO){
+            builder.addAction(customIcon2, "Custom2", pCustomIntent2);
+        }
+
+        if(!this.isPlaying){
+            builder.setTimeoutAfter(900000);
+        }
+        return builder;
     }
 
     private void showNotification() {
         Notification notification;
 
                 notificationManager = initNotificationManager();
-        NotificationCompat.Builder builder = new NotificationCompat.Builder(this.context, CHANNEL_ID)
+        builder = new NotificationCompat.Builder(this.context, CHANNEL_ID)
                 .setSmallIcon(R.drawable.ic_notification)
                 .setWhen(System.currentTimeMillis())
                 .setShowWhen(false)
                 .setColorized(true)
                 .setSound(null)
                 .setContentIntent(pNotificatioIntent);
+
+        builder.setSubText(DURATIONS);
+        builder.setOngoing(true);
 
         if (audioObject.getTitle() != null) {
             builder.setContentTitle(audioObject.getTitle());
@@ -181,6 +248,8 @@ public class MediaNotificationManager {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             builder = initNotificationStyle(builder);
         }
+
+        AudioPlayerPlugin.updateDurations = this;
 
         notification = builder.build();
 
@@ -291,6 +360,26 @@ public class MediaNotificationManager {
             }).execute();
         } catch (Exception e) {
             Log.e("ExoPlayerPlugin", "Failed loading image!");
+        }
+    }
+
+    private String durationFormat(long duration) {
+        int seconds = (int) (duration / 1000) % 60 ;
+        int minutes = (int) ((duration / (1000*60)) % 60);
+        int hours   = (int) ((duration / (1000*60*60)) % 24);
+        if(hours > 0) {
+            return String.format(Locale.ENGLISH,"%02d:%02d:%02d", hours, minutes, seconds);
+        }
+        return String.format(Locale.ENGLISH,"%02d:%02d", minutes, seconds);
+    }
+
+    @Override
+    public void fetchDurations(long totalDurations, long duration) {
+        DURATIONS = durationFormat(duration);
+        if(builder != null && notificationManager != null) {
+            builder.setSubText(DURATIONS);
+            //builder.setProgress((int)totalDurations,(int)duration, false);
+            notificationManager.notify(NOTIFICATION_ID, builder.build());
         }
     }
 }

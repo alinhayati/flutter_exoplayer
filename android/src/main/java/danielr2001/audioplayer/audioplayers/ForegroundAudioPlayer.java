@@ -8,10 +8,12 @@ import android.app.PendingIntent;
 import android.app.Service;
 import android.content.Context;
 import android.content.Intent;
+import android.media.MediaMetadata;
 import android.net.Uri;
 import android.os.Binder;
 import android.os.Build;
 import android.os.IBinder;
+import android.support.v4.media.MediaMetadataCompat;
 import android.support.v4.media.session.MediaSessionCompat;
 import android.util.Log;
 import android.view.Surface;
@@ -98,8 +100,17 @@ public class ForegroundAudioPlayer extends Service implements AudioPlayer {
     @Override
     public int onStartCommand(Intent intent, int flags, int startId) {
         this.context = getApplicationContext();
-        createTempNotificationWhileInitializingPlayer();
+        if (mediaNotificationManager == null) {
+            createTempNotificationWhileInitializingPlayer();
+        } else if(!mediaNotificationManager.isShowing()) {
+            createTempNotificationWhileInitializingPlayer();
+        }
         mediaSession = new MediaSessionCompat(this.context, "playback");
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
+            MediaMetadataCompat.Builder builder = new MediaMetadataCompat.Builder();
+            builder.putLong(MediaMetadata.METADATA_KEY_DURATION, -1);
+            mediaSession.setMetadata(builder.build());
+        }
         // ! TODO handle MediaButtonReceiver's callbacks
         // MediaButtonReceiver.handleIntent(mediaSession, intent);
         // mediaSession.setCallback(mediaSessionCallback);
@@ -279,7 +290,7 @@ public class ForegroundAudioPlayer extends Service implements AudioPlayer {
             if (index != 0) {
                 player.seekTo(index, 0);
             }
-        } else {
+        } else if (this.audioObject != null) {
             String url = this.audioObject.getUrl();
             MediaSource mediaSource;
             if (URLUtil.isHttpsUrl(url) || URLUtil.isHttpUrl(url)) {
