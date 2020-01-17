@@ -326,7 +326,7 @@ public class MediaNotificationManager implements AudioPlayerPlugin.UpdateDuratio
                 || audioObject.getNotificationActionMode() == NotificationDefaultActions.FORWARD
                 || audioObject.getNotificationActionMode() == NotificationDefaultActions.BACKWARD) {
             builder.setStyle(new androidx.media.app.NotificationCompat.DecoratedMediaCustomViewStyle()
-                    .setShowActionsInCompactView(0, 1)
+                    .setShowActionsInCompactView(0, 1, 2)
                     .setMediaSession(mediaSession.getSessionToken()));
         } else if (audioObject.getNotificationActionMode() == NotificationDefaultActions.ALL) {
             builder.setStyle(new androidx.media.app.NotificationCompat.DecoratedMediaCustomViewStyle()
