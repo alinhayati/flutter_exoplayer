@@ -10,6 +10,7 @@ import android.content.Context;
 import android.content.Intent;
 import android.graphics.Bitmap;
 import android.os.Build;
+import android.os.Handler;
 import android.support.v4.media.session.MediaSessionCompat;
 import android.util.Log;
 
@@ -155,8 +156,14 @@ public class MediaNotificationManager implements AudioPlayerPlugin.UpdateDuratio
     public void makeNotification(boolean isPlaying) {
         this.isPlaying = isPlaying;
         if(notificationManager != null) {
-            builder = updateNotificationsActions(builder);
-            notificationManager.notify(NOTIFICATION_ID, builder.build());
+            final Handler handler = new Handler();
+            handler.postDelayed(new Runnable() {
+                @Override
+                public void run() {
+                    builder = updateNotificationsActions(builder);
+                    notificationManager.notify(NOTIFICATION_ID, builder.build());
+                }
+            }, 1000);
         }
         else {
             showNotification();
