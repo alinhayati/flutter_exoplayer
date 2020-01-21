@@ -122,77 +122,79 @@ public class ForegroundAudioPlayer extends Service implements AudioPlayer {
                 currentAudioObject = this.audioObject;
             }
 
-            switch (intent.getAction()) {
-                case MediaNotificationManager.PREVIOUS_ACTION:
-                    if (currentAudioObject.getNotificationActionCallbackMode() == NotificationActionCallbackMode.DEFAULT) {
-                        previous();
-                    } else {
-                        ref.handleNotificationActionCallback(this.foregroundAudioPlayer,
-                                NotificationActionName.PREVIOUS);
-                    }
-                    break;
-                case MediaNotificationManager.PLAY_ACTION:
-                    if (currentAudioObject.getNotificationActionCallbackMode() == NotificationActionCallbackMode.DEFAULT) {
-                        if (!stopped) {
-                            resume();
+            if(currentAudioObject != null &&  currentAudioObject.getNotificationActionCallbackMode() != null) {
+                switch (intent.getAction()) {
+                    case MediaNotificationManager.PREVIOUS_ACTION:
+                        if (currentAudioObject.getNotificationActionCallbackMode() == NotificationActionCallbackMode.DEFAULT) {
+                            previous();
                         } else {
-                            if (playerMode == PlayerMode.PLAYLIST) {
-                                playAll(audioObjects, 0);
+                            ref.handleNotificationActionCallback(this.foregroundAudioPlayer,
+                                    NotificationActionName.PREVIOUS);
+                        }
+                        break;
+                    case MediaNotificationManager.PLAY_ACTION:
+                        if (currentAudioObject.getNotificationActionCallbackMode() == NotificationActionCallbackMode.DEFAULT) {
+                            if (!stopped) {
+                                resume();
                             } else {
-                                play(audioObject);
+                                if (playerMode == PlayerMode.PLAYLIST) {
+                                    playAll(audioObjects, 0);
+                                } else {
+                                    play(audioObject);
+                                }
                             }
+                        } else {
+                            ref.handleNotificationActionCallback(this.foregroundAudioPlayer,
+                                    NotificationActionName.PLAY);
                         }
-                    } else {
-                        ref.handleNotificationActionCallback(this.foregroundAudioPlayer,
-                                NotificationActionName.PLAY);
-                    }
-                    break;
-                case MediaNotificationManager.PAUSE_ACTION:
-                    if (currentAudioObject.getNotificationActionCallbackMode() == NotificationActionCallbackMode.DEFAULT) {
-                        pause();
-                    } else {
-                        ref.handleNotificationActionCallback(this.foregroundAudioPlayer,
-                                NotificationActionName.PAUSE);
-                    }
-                    break;
-                case MediaNotificationManager.NEXT_ACTION:
-                    if (currentAudioObject.getNotificationActionCallbackMode() == NotificationActionCallbackMode.DEFAULT) {
-                        next();
-                    } else {
-                        ref.handleNotificationActionCallback(this.foregroundAudioPlayer,
-                                NotificationActionName.NEXT);
-                    }
-                    break;
-                case MediaNotificationManager.FORWARD_ACTION:
-                    if (currentAudioObject.getNotificationActionCallbackMode() == NotificationActionCallbackMode.DEFAULT) {
-                        if(!this.released){
-                            player.seekTo(player.getCurrentPosition() + 15000);
+                        break;
+                    case MediaNotificationManager.PAUSE_ACTION:
+                        if (currentAudioObject.getNotificationActionCallbackMode() == NotificationActionCallbackMode.DEFAULT) {
+                            pause();
+                        } else {
+                            ref.handleNotificationActionCallback(this.foregroundAudioPlayer,
+                                    NotificationActionName.PAUSE);
                         }
-                    } else {
-                        ref.handleNotificationActionCallback(this.foregroundAudioPlayer, NotificationActionName.FORWARD);
-                    }
-                    break;
-                case MediaNotificationManager.BACKWARD_ACTION:
-                    if (currentAudioObject.getNotificationActionCallbackMode() == NotificationActionCallbackMode.DEFAULT) {
-                        if(!this.released){
-                            if(player.getCurrentPosition()>=15000){
-                                player.seekTo(player.getCurrentPosition() - 15000);
-                            }else{
-                                player.seekTo(0);
+                        break;
+                    case MediaNotificationManager.NEXT_ACTION:
+                        if (currentAudioObject.getNotificationActionCallbackMode() == NotificationActionCallbackMode.DEFAULT) {
+                            next();
+                        } else {
+                            ref.handleNotificationActionCallback(this.foregroundAudioPlayer,
+                                    NotificationActionName.NEXT);
+                        }
+                        break;
+                    case MediaNotificationManager.FORWARD_ACTION:
+                        if (currentAudioObject.getNotificationActionCallbackMode() == NotificationActionCallbackMode.DEFAULT) {
+                            if(!this.released){
+                                player.seekTo(player.getCurrentPosition() + 15000);
                             }
+                        } else {
+                            ref.handleNotificationActionCallback(this.foregroundAudioPlayer, NotificationActionName.FORWARD);
                         }
-                    }else{
-                        ref.handleNotificationActionCallback(this.foregroundAudioPlayer, NotificationActionName.BACKWARD);
-                    }
-                    break;
-                case MediaNotificationManager.CUSTOM1_ACTION:
-                    ref.handleNotificationActionCallback(this.foregroundAudioPlayer,
-                            NotificationActionName.CUSTOM1);
-                    break;
-                case MediaNotificationManager.CUSTOM2_ACTION:
-                    ref.handleNotificationActionCallback(this.foregroundAudioPlayer,
-                            NotificationActionName.CUSTOM2);
-                    break;
+                        break;
+                    case MediaNotificationManager.BACKWARD_ACTION:
+                        if (currentAudioObject.getNotificationActionCallbackMode() == NotificationActionCallbackMode.DEFAULT) {
+                            if(!this.released){
+                                if(player.getCurrentPosition()>=15000){
+                                    player.seekTo(player.getCurrentPosition() - 15000);
+                                }else{
+                                    player.seekTo(0);
+                                }
+                            }
+                        }else{
+                            ref.handleNotificationActionCallback(this.foregroundAudioPlayer, NotificationActionName.BACKWARD);
+                        }
+                        break;
+                    case MediaNotificationManager.CUSTOM1_ACTION:
+                        ref.handleNotificationActionCallback(this.foregroundAudioPlayer,
+                                NotificationActionName.CUSTOM1);
+                        break;
+                    case MediaNotificationManager.CUSTOM2_ACTION:
+                        ref.handleNotificationActionCallback(this.foregroundAudioPlayer,
+                                NotificationActionName.CUSTOM2);
+                        break;
+                }
             }
             return START_STICKY;
         }else{

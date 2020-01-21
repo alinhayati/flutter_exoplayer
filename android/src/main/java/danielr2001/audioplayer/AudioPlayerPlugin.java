@@ -449,6 +449,10 @@ public class AudioPlayerPlugin implements MethodCallHandler {
       ContextCompat.startForegroundService(this.context, new Intent(this.context, ForegroundAudioPlayer.class));
       this.context.bindService(new Intent(this.context, ForegroundAudioPlayer.class), connection, Context.BIND_AUTO_CREATE);
     }else{
+      dispose();
+      this.context.stopService(new Intent(this.context, ForegroundAudioPlayer.class));
+      ContextCompat.startForegroundService(this.context, new Intent(this.context, ForegroundAudioPlayer.class));
+      this.context.bindService(new Intent(this.context, ForegroundAudioPlayer.class), connection, Context.BIND_AUTO_CREATE);
       Log.e("AudioPlayerPlugin", "Can't start more than 1 service at a time, to stop service call release method");
     }
   }
