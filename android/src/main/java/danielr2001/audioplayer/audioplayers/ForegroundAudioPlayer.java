@@ -190,6 +190,17 @@ public class ForegroundAudioPlayer extends Service implements AudioPlayer {
                 activity, CHANNEL_ID,R.string.exo_track_selection_none, NOTIFICATION_ID, new DescriptionAdapter(audioObject, activity));
 
         playerNotificationManager.setPriority(NotificationCompat.PRIORITY_HIGH);
+        playerNotificationManager.setNotificationListener(new PlayerNotificationManager.NotificationListener() {
+            @Override
+            public void onNotificationStarted(int notificationId, Notification notification) {
+                startForeground(notificationId, notification);
+            }
+
+            @Override
+            public void onNotificationCancelled(int notificationId) {
+                stopSelf();
+            }
+        });
         player = ExoPlayerFactory.newSimpleInstance(this.context, trackSelector, loadControl);
         player.setForegroundMode(true);
         DataSource.Factory offlineDataSourceFactory = new DefaultDataSourceFactory(this, Util.getUserAgent(this.context, "exoPlayerLibrary"));
