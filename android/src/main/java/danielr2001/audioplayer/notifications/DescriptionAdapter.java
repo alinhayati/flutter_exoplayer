@@ -1,7 +1,7 @@
 package danielr2001.audioplayer.notifications;
 
-import android.app.Activity;
 import android.app.PendingIntent;
+import android.content.Context;
 import android.content.Intent;
 import android.graphics.Bitmap;
 import android.os.StrictMode;
@@ -21,12 +21,12 @@ import danielr2001.audioplayer.models.AudioObject;
 public class DescriptionAdapter implements PlayerNotificationManager.MediaDescriptionAdapter {
 
     private AudioObject audioObject;
-    private Activity activity;
+    private Context context;
     private PendingIntent currentContentPendingIntent = null;
 
-    public DescriptionAdapter(AudioObject audioObject, Activity activity) {
+    public DescriptionAdapter(AudioObject audioObject, Context context) {
         this.audioObject = audioObject;
-        this.activity = activity;
+        this.context = context;
         StrictMode.ThreadPolicy policy = new StrictMode.ThreadPolicy.Builder()
                 .detectAll()
                 .penaltyLog()
@@ -63,14 +63,14 @@ public class DescriptionAdapter implements PlayerNotificationManager.MediaDescri
 
     private PendingIntent createCurrentContentPendingIntent() {
         if (currentContentPendingIntent != null) return currentContentPendingIntent;
-        Intent notificationIntent = new Intent(activity, activity.getClass());
+        Intent notificationIntent = new Intent(context, context.getClass());
         notificationIntent.setFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP);
         notificationIntent.setFlags(Intent.FLAG_ACTIVITY_SINGLE_TOP);
-        currentContentPendingIntent = PendingIntent.getActivity(activity, 0, notificationIntent, 0);
+        currentContentPendingIntent = PendingIntent.getActivity(context, 0, notificationIntent, 0);
         return currentContentPendingIntent;
     }
 
-    Bitmap bitmap = null;
+    private Bitmap bitmap = null;
     private Bitmap loadImageFromUrl(String imageUrl, boolean isLocal) {
         try {
             new LoadImageFromUrl(imageUrl, isLocal, new AsyncResponse() {

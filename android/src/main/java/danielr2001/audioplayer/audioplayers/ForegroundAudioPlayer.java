@@ -58,6 +58,7 @@ import java.util.ArrayList;
 import danielr2001.audioplayer.AudioPlayerPlugin;
 import danielr2001.audioplayer.R;
 
+import danielr2001.audioplayer.enums.NotificationDefaultActions;
 import danielr2001.audioplayer.enums.PlayerMode;
 import danielr2001.audioplayer.enums.PlayerState;
 import danielr2001.audioplayer.interfaces.AudioPlayer;
@@ -186,21 +187,7 @@ public class ForegroundAudioPlayer extends Service implements AudioPlayer {
                     new LeastRecentlyUsedCacheEvictor(InsightExoPlayerConstants.DEFAULT_MEDIA_CACHE_SIZE),
                     new ExoDatabaseProvider(context));
         }
-        playerNotificationManager = PlayerNotificationManager.createWithNotificationChannel(
-                activity, CHANNEL_ID,R.string.exo_track_selection_none, NOTIFICATION_ID, new DescriptionAdapter(audioObject, activity));
-
-        playerNotificationManager.setPriority(NotificationCompat.PRIORITY_HIGH);
-        playerNotificationManager.setNotificationListener(new PlayerNotificationManager.NotificationListener() {
-            @Override
-            public void onNotificationStarted(int notificationId, Notification notification) {
-                startForeground(notificationId, notification);
-            }
-
-            @Override
-            public void onNotificationCancelled(int notificationId) {
-                stopSelf();
-            }
-        });
+        setNotificationBar();
         player = ExoPlayerFactory.newSimpleInstance(this.context, trackSelector, loadControl);
         player.setForegroundMode(true);
         DataSource.Factory offlineDataSourceFactory = new DefaultDataSourceFactory(this, Util.getUserAgent(this.context, "exoPlayerLibrary"));
@@ -762,6 +749,39 @@ public class ForegroundAudioPlayer extends Service implements AudioPlayer {
     public class LocalBinder extends Binder {
         public ForegroundAudioPlayer getService() {
             return ForegroundAudioPlayer.this;
+        }
+    }
+
+    public void setNotificationBar() {
+        playerNotificationManager = PlayerNotificationManager.createWithNotificationChannel(
+                context, CHANNEL_ID,R.string.exo_track_selection_none, NOTIFICATION_ID, new DescriptionAdapter(audioObject, context));
+
+        playerNotificationManager.setPriority(NotificationCompat.PRIORITY_HIGH);
+        playerNotificationManager.setMediaSessionToken(mediaSession.getSessionToken());
+        playerNotificationManager.setNotificationListener(new PlayerNotificationManager.NotificationListener() {
+            @Override
+            public void onNotificationStarted(int notificationId, Notification notification) {
+                startForeground(notificationId, notification);
+            }
+
+            @Override
+            public void onNotificationCancelled(int notificationId) {
+                stopSelf();
+            }
+        });
+        int icon = this.context.getResources().getIdentifier(audioObject.getSmallIconFileName(), "drawable",
+                this.context.getPackageName());
+        playerNotificationManager.setSmallIcon(icon);
+        playerNotificationManager.setUseStopAction(false);
+        playerNotificationManager.setUseNavigationActions(false);
+        playerNotificationManager.setUseNavigationActionsInCompactView(true);
+        playerNotificationManager.setFastForwardIncrementMs(0);
+        playerNotificationManager.setRewindIncrementMs(0);
+        if (audioObject.getNotificationActionMode() == NotificationDefaultActions.FORWARD ||
+                audioObject.getNotificationActionMode() == NotificationDefaultActions.BACKWARD ||
+                audioObject.getNotificationActionMode() == NotificationDefaultActions.ALL) {
+            playerNotificationManager.setFastForwardIncrementMs(15000);
+            playerNotificationManager.setRewindIncrementMs(15000);
         }
     }
 }
