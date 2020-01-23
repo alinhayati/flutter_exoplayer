@@ -124,12 +124,6 @@ public class ForegroundAudioPlayer extends Service implements AudioPlayer {
             }
         });
 
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
-            MediaMetadataCompat.Builder builder = new MediaMetadataCompat.Builder();
-            builder.putLong(MediaMetadata.METADATA_KEY_DURATION, -1);
-            mediaSession.setMetadata(builder.build());
-        }
-
         // ! TODO handle MediaButtonReceiver's callbacks
         // MediaButtonReceiver.handleIntent(mediaSession, intent);
         // mediaSession.setCallback(mediaSessionCallback);
@@ -236,7 +230,7 @@ public class ForegroundAudioPlayer extends Service implements AudioPlayer {
         } else if (this.audioObject != null) {
             if (audioObject.getLargeIconUrl() != null) {
                 if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
-                    loadImageFromUrl(audioObject.getLargeIconUrl(), audioObject.getIsLocal());
+                    albumArt = loadImageFromUrl(audioObject.getLargeIconUrl(), audioObject.getIsLocal());
                 }
             }
             String url = this.audioObject.getUrl();
@@ -816,15 +810,19 @@ public class ForegroundAudioPlayer extends Service implements AudioPlayer {
                 audioObject.getNotificationActionMode() == NotificationDefaultActions.ALL) {
             playerNotificationManager.setFastForwardIncrementMs(15000);
             playerNotificationManager.setRewindIncrementMs(15000);
+        } else {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
+                MediaMetadataCompat.Builder builder = new MediaMetadataCompat.Builder();
+                builder.putLong(MediaMetadata.METADATA_KEY_DURATION, -1);
+                mediaSession.setMetadata(builder.build());
+            }
         }
     }
 
     private MediaDescriptionCompat updateMediaSessionMetaData() {
         MediaMetadataCompat.Builder metaDataBuilder = new MediaMetadataCompat.Builder();
         metaDataBuilder.putBitmap(MediaMetadata.METADATA_KEY_ALBUM_ART, albumArt);
-        metaDataBuilder.putBitmap(MediaMetadata.METADATA_KEY_ART, albumArt);
         mediaSession.setMetadata(metaDataBuilder.build());
-        mediaSessionConnector.invalidateMediaSessionMetadata();
         return metaDataBuilder.build().getDescription();
     }
 
@@ -837,7 +835,7 @@ public class ForegroundAudioPlayer extends Service implements AudioPlayer {
                         if (bitmapMap.get(audioObject.getLargeIconUrl()) != null) {
                             audioObject.setLargeIcon(bitmapMap.get(audioObject.getLargeIconUrl()));
                             albumArt = bitmapMap.get(audioObject.getLargeIconUrl());
-                            mediaSessionConnector.invalidateMediaSessionMetadata();
+                            mediaSessionConnector.invalidateMediaSessionQueue();
                         } else {
                             Log.e("ExoPlayerPlugin", "canceled showing notification!");
                         }
