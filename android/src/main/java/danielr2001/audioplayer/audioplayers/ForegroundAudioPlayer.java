@@ -8,14 +8,11 @@ import android.app.PendingIntent;
 import android.app.Service;
 import android.content.Context;
 import android.content.Intent;
-import android.graphics.Bitmap;
-import android.graphics.BitmapFactory;
 import android.media.MediaMetadata;
 import android.net.Uri;
 import android.os.Binder;
 import android.os.Build;
 import android.os.IBinder;
-import android.support.v4.media.MediaDescriptionCompat;
 import android.support.v4.media.MediaMetadataCompat;
 import android.support.v4.media.session.MediaSessionCompat;
 import android.util.Log;
@@ -37,8 +34,6 @@ import com.google.android.exoplayer2.analytics.AnalyticsListener;
 import com.google.android.exoplayer2.audio.AudioAttributes;
 import com.google.android.exoplayer2.database.ExoDatabaseProvider;
 import com.google.android.exoplayer2.decoder.DecoderCounters;
-import com.google.android.exoplayer2.ext.mediasession.MediaSessionConnector;
-import com.google.android.exoplayer2.ext.mediasession.TimelineQueueNavigator;
 import com.google.android.exoplayer2.metadata.Metadata;
 import com.google.android.exoplayer2.source.ConcatenatingMediaSource;
 import com.google.android.exoplayer2.source.MediaSource;
@@ -59,7 +54,6 @@ import com.google.android.exoplayer2.util.Util;
 import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
-import java.util.Map;
 
 import danielr2001.audioplayer.AudioPlayerPlugin;
 import danielr2001.audioplayer.R;
@@ -67,11 +61,9 @@ import danielr2001.audioplayer.R;
 import danielr2001.audioplayer.enums.NotificationDefaultActions;
 import danielr2001.audioplayer.enums.PlayerMode;
 import danielr2001.audioplayer.enums.PlayerState;
-import danielr2001.audioplayer.interfaces.AsyncResponse;
 import danielr2001.audioplayer.interfaces.AudioPlayer;
 import danielr2001.audioplayer.models.AudioObject;
 import danielr2001.audioplayer.notifications.DescriptionAdapter;
-import danielr2001.audioplayer.notifications.LoadImageFromUrl;
 
 public class ForegroundAudioPlayer extends Service implements AudioPlayer {
 
@@ -80,7 +72,6 @@ public class ForegroundAudioPlayer extends Service implements AudioPlayer {
     private Context context;
     private AudioPlayerPlugin ref;
     private MediaSessionCompat mediaSession;
-    private MediaSessionConnector mediaSessionConnector;
     private String playerId;
     //player attributes
     private float volume = 1;
@@ -103,7 +94,6 @@ public class ForegroundAudioPlayer extends Service implements AudioPlayer {
     Activity activity;
     public static final int NOTIFICATION_ID = 1;
     public static final String CHANNEL_ID = "Playback";
-    private Bitmap albumArt;
 
     @Nullable
     @Override
@@ -116,20 +106,17 @@ public class ForegroundAudioPlayer extends Service implements AudioPlayer {
         this.context = getApplicationContext();
         createTempNotificationWhileInitializingPlayer();
         mediaSession = new MediaSessionCompat(this.context, "playback");
-        mediaSessionConnector = new MediaSessionConnector(mediaSession);
-        mediaSessionConnector.setQueueNavigator(new TimelineQueueNavigator(mediaSession) {
-            @Override
-            public MediaDescriptionCompat getMediaDescription(Player player, int windowIndex) {
-                return updateMediaSessionMetaData();
-            }
-        });
-
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
+            MediaMetadataCompat.Builder builder = new MediaMetadataCompat.Builder();
+            builder.putLong(MediaMetadata.METADATA_KEY_DURATION, -1);
+            mediaSession.setMetadata(builder.build());
+        }
         // ! TODO handle MediaButtonReceiver's callbacks
         // MediaButtonReceiver.handleIntent(mediaSession, intent);
         // mediaSession.setCallback(mediaSessionCallback);
         if (intent != null && intent.getAction() != null) {
             return START_STICKY;
-        } else {
+        }else{
             return START_REDELIVER_INTENT;
         }
     }
@@ -206,7 +193,7 @@ public class ForegroundAudioPlayer extends Service implements AudioPlayer {
         DataSource.Factory offlineDataSourceFactory = new DefaultDataSourceFactory(this, Util.getUserAgent(this.context, "exoPlayerLibrary"));
         DataSource.Factory onlineDataSourceFactory = new InsightCacheDataSourceFactory(this.context, cache);
         // playlist/single audio load
-        InsightLoadErrorPolicy insightLoadErrorPolicy = new InsightLoadErrorPolicy();
+        InsightLoadErrorPolicy insightCustomLoadErrorPolicy = new InsightLoadErrorPolicy();
         if (this.playerMode == PlayerMode.PLAYLIST) {
             ConcatenatingMediaSource concatenatingMediaSource = new ConcatenatingMediaSource();
             for (AudioObject audioObject : audioObjects) {
@@ -214,11 +201,11 @@ public class ForegroundAudioPlayer extends Service implements AudioPlayer {
                 MediaSource mediaSource;
                 if (URLUtil.isHttpsUrl(url) || URLUtil.isHttpUrl(url)) {
                     mediaSource = new ProgressiveMediaSource.Factory(onlineDataSourceFactory)
-                            .setLoadErrorHandlingPolicy(insightLoadErrorPolicy)
+                            .setLoadErrorHandlingPolicy(insightCustomLoadErrorPolicy)
                             .createMediaSource(Uri.parse(url));
                 } else {
                     mediaSource = new ProgressiveMediaSource.Factory(offlineDataSourceFactory)
-                            .setLoadErrorHandlingPolicy(insightLoadErrorPolicy)
+                            .setLoadErrorHandlingPolicy(insightCustomLoadErrorPolicy)
                             .createMediaSource(Uri.parse(url));
                 }
                 concatenatingMediaSource.addMediaSource(mediaSource);
@@ -228,27 +215,20 @@ public class ForegroundAudioPlayer extends Service implements AudioPlayer {
                 player.seekTo(index, 0);
             }
         } else if (this.audioObject != null) {
-            if (audioObject.getLargeIconUrl() != null) {
-                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
-                    albumArt = loadImageFromUrl(audioObject.getLargeIconUrl(), audioObject.getIsLocal());
-                }
-            }
             String url = this.audioObject.getUrl();
             MediaSource mediaSource;
             if (URLUtil.isHttpsUrl(url) || URLUtil.isHttpUrl(url)) {
                 mediaSource = new ProgressiveMediaSource.Factory(onlineDataSourceFactory)
-                        .setLoadErrorHandlingPolicy(insightLoadErrorPolicy)
+                        .setLoadErrorHandlingPolicy(insightCustomLoadErrorPolicy)
                         .createMediaSource(Uri.parse(url));
             } else {
                 mediaSource = new ProgressiveMediaSource.Factory(offlineDataSourceFactory)
-                        .setLoadErrorHandlingPolicy(insightLoadErrorPolicy)
+                        .setLoadErrorHandlingPolicy(insightCustomLoadErrorPolicy)
                         .createMediaSource(Uri.parse(url));
             }
             player.prepare(mediaSource, true, false);
         }
 
-
-        mediaSessionConnector.setPlayer(player);
         playerNotificationManager.setPlayer(player);
 
         // handle audio focus
@@ -468,8 +448,7 @@ public class ForegroundAudioPlayer extends Service implements AudioPlayer {
 
             @Override
             public void onTracksChanged(TrackGroupArray trackGroups,
-                                        TrackSelectionArray trackSelections) {
-                ref.handlePlayerIndex(foregroundAudioPlayer);
+                                        TrackSelectionArray trackSelections) { ref.handlePlayerIndex(foregroundAudioPlayer);
             }
 
             @Override
@@ -810,44 +789,6 @@ public class ForegroundAudioPlayer extends Service implements AudioPlayer {
                 audioObject.getNotificationActionMode() == NotificationDefaultActions.ALL) {
             playerNotificationManager.setFastForwardIncrementMs(15000);
             playerNotificationManager.setRewindIncrementMs(15000);
-        } else {
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
-                MediaMetadataCompat.Builder builder = new MediaMetadataCompat.Builder();
-                builder.putLong(MediaMetadata.METADATA_KEY_DURATION, -1);
-                mediaSession.setMetadata(builder.build());
-            }
         }
     }
-
-    private MediaDescriptionCompat updateMediaSessionMetaData() {
-        MediaMetadataCompat.Builder metaDataBuilder = new MediaMetadataCompat.Builder();
-        metaDataBuilder.putBitmap(MediaMetadata.METADATA_KEY_ALBUM_ART, albumArt);
-        mediaSession.setMetadata(metaDataBuilder.build());
-        return metaDataBuilder.build().getDescription();
-    }
-
-    private Bitmap loadImageFromUrl(String imageUrl, boolean isLocal) {
-        try {
-            new LoadImageFromUrl(imageUrl, isLocal, new AsyncResponse() {
-                @Override
-                public void processFinish(Map<String, Bitmap> bitmapMap) {
-                    if (bitmapMap != null) {
-                        if (bitmapMap.get(audioObject.getLargeIconUrl()) != null) {
-                            audioObject.setLargeIcon(bitmapMap.get(audioObject.getLargeIconUrl()));
-                            albumArt = bitmapMap.get(audioObject.getLargeIconUrl());
-                            mediaSessionConnector.invalidateMediaSessionQueue();
-                        } else {
-                            Log.e("ExoPlayerPlugin", "canceled showing notification!");
-                        }
-                    } else {
-                        Log.e("ExoPlayerPlugin", "Failed loading image!");
-                    }
-                }
-            }).execute();
-        } catch (Exception e) {
-            Log.e("ExoPlayerPlugin", "Failed loading image!");
-        }
-        return albumArt;
-    }
-
 }
