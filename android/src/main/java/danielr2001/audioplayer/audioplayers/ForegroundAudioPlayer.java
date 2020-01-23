@@ -453,6 +453,7 @@ public class ForegroundAudioPlayer extends Service implements AudioPlayer {
                         // buffering
                         buffering = true;
                         playerNotificationManager.setUseChronometer(false);
+                        playerNotificationManager.invalidate();
                         ref.handleStateChange(foregroundAudioPlayer, PlayerState.BUFFERING);
                         break;
                     }
@@ -460,6 +461,7 @@ public class ForegroundAudioPlayer extends Service implements AudioPlayer {
                         if (completed) {
                             buffering = false;
                             playerNotificationManager.setUseChronometer(false);
+                            playerNotificationManager.invalidate();
                             ref.handleStateChange(foregroundAudioPlayer, PlayerState.COMPLETED);
                         } else if (buffering) {
                             // playing
@@ -467,10 +469,12 @@ public class ForegroundAudioPlayer extends Service implements AudioPlayer {
                             if (playWhenReady) {
                                 playing = true;
                                 playerNotificationManager.setUseChronometer(true);
+                                playerNotificationManager.invalidate();
                                 ref.handleStateChange(foregroundAudioPlayer, PlayerState.PLAYING);
                                 ref.handlePositionUpdates();
                             } else {
                                 playerNotificationManager.setUseChronometer(false);
+                                playerNotificationManager.invalidate();
                                 ref.handleStateChange(foregroundAudioPlayer, PlayerState.PAUSED);
                             }
                         } else if (playWhenReady) {
@@ -479,11 +483,13 @@ public class ForegroundAudioPlayer extends Service implements AudioPlayer {
                             ref.handlePositionUpdates();
                             ref.handleStateChange(foregroundAudioPlayer, PlayerState.PLAYING);
                             playerNotificationManager.setUseChronometer(true);
+                            playerNotificationManager.invalidate();
                         } else if (!playWhenReady) {
                             // paused
                             playing = false;
                             ref.handleStateChange(foregroundAudioPlayer, PlayerState.PAUSED);
                             playerNotificationManager.setUseChronometer(false);
+                            playerNotificationManager.invalidate();
                         }
 
                         break;
