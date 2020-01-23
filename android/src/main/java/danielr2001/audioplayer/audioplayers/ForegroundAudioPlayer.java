@@ -457,8 +457,6 @@ public class ForegroundAudioPlayer extends Service implements AudioPlayer {
                     case Player.STATE_BUFFERING: {
                         // buffering
                         buffering = true;
-                        playerNotificationManager.setUseChronometer(false);
-                        playerNotificationManager.invalidate();
                         ref.handleStateChange(foregroundAudioPlayer, PlayerState.BUFFERING);
                         break;
                     }
@@ -473,28 +471,20 @@ public class ForegroundAudioPlayer extends Service implements AudioPlayer {
                             buffering = false;
                             if (playWhenReady) {
                                 playing = true;
-                                playerNotificationManager.setUseChronometer(true);
-                                playerNotificationManager.invalidate();
                                 ref.handleStateChange(foregroundAudioPlayer, PlayerState.PLAYING);
                                 ref.handlePositionUpdates();
                             } else {
-                                playerNotificationManager.setUseChronometer(false);
-                                playerNotificationManager.invalidate();
                                 ref.handleStateChange(foregroundAudioPlayer, PlayerState.PAUSED);
                             }
                         } else if (playWhenReady) {
                             // resumed
                             playing = true;
                             ref.handlePositionUpdates();
-                            ref.handleStateChange(foregroundAudioPlayer, PlayerState.PLAYING);
-                            playerNotificationManager.setUseChronometer(true);
                             playerNotificationManager.invalidate();
                         } else if (!playWhenReady) {
                             // paused
                             playing = false;
                             ref.handleStateChange(foregroundAudioPlayer, PlayerState.PAUSED);
-                            playerNotificationManager.setUseChronometer(false);
-                            playerNotificationManager.invalidate();
                         }
 
                         break;
