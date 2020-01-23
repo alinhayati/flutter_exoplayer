@@ -458,15 +458,18 @@ public class ForegroundAudioPlayer extends Service implements AudioPlayer {
                     case Player.STATE_READY: {
                         if (completed) {
                             buffering = false;
+                            playerNotificationManager.setUseChronometer(false);
                             ref.handleStateChange(foregroundAudioPlayer, PlayerState.COMPLETED);
                         } else if (buffering) {
                             // playing
                             buffering = false;
                             if (playWhenReady) {
                                 playing = true;
+                                playerNotificationManager.setUseChronometer(true);
                                 ref.handleStateChange(foregroundAudioPlayer, PlayerState.PLAYING);
                                 ref.handlePositionUpdates();
                             } else {
+                                playerNotificationManager.setUseChronometer(false);
                                 ref.handleStateChange(foregroundAudioPlayer, PlayerState.PAUSED);
                             }
                         } else if (playWhenReady) {
@@ -474,10 +477,12 @@ public class ForegroundAudioPlayer extends Service implements AudioPlayer {
                             playing = true;
                             ref.handlePositionUpdates();
                             ref.handleStateChange(foregroundAudioPlayer, PlayerState.PLAYING);
+                            playerNotificationManager.setUseChronometer(true);
                         } else if (!playWhenReady) {
                             // paused
                             playing = false;
                             ref.handleStateChange(foregroundAudioPlayer, PlayerState.PAUSED);
+                            playerNotificationManager.setUseChronometer(false);
                         }
 
                         break;
@@ -498,6 +503,7 @@ public class ForegroundAudioPlayer extends Service implements AudioPlayer {
                         playing = false;
                         stopped = false;
                         completed = false;
+                        playerNotificationManager.setUseChronometer(false);
                         ref.handleStateChange(foregroundAudioPlayer, PlayerState.BUFFERING);
 
                         break;
@@ -775,6 +781,7 @@ public class ForegroundAudioPlayer extends Service implements AudioPlayer {
         playerNotificationManager.setUseNavigationActionsInCompactView(true);
         playerNotificationManager.setFastForwardIncrementMs(0);
         playerNotificationManager.setRewindIncrementMs(0);
+
         if (audioObject.getNotificationActionMode() == NotificationDefaultActions.FORWARD ||
                 audioObject.getNotificationActionMode() == NotificationDefaultActions.BACKWARD ||
                 audioObject.getNotificationActionMode() == NotificationDefaultActions.ALL) {
