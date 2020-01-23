@@ -760,13 +760,13 @@ public class ForegroundAudioPlayer extends Service implements AudioPlayer {
         playerNotificationManager.setMediaSessionToken(mediaSession.getSessionToken());
         playerNotificationManager.setNotificationListener(new PlayerNotificationManager.NotificationListener() {
             @Override
-            public void onNotificationStarted(int notificationId, Notification notification) {
-                startForeground(notificationId, notification);
+            public void onNotificationCancelled(int notificationId, boolean dismissedByUser) {
+                stopSelf();
             }
 
             @Override
-            public void onNotificationCancelled(int notificationId) {
-                stopSelf();
+            public void onNotificationPosted(int notificationId, Notification notification, boolean ongoing) {
+                startForeground(notificationId, notification);
             }
         });
         int icon = this.context.getResources().getIdentifier(audioObject.getSmallIconFileName(), "drawable",
