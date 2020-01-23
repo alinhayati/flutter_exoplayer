@@ -308,7 +308,6 @@ public class ForegroundAudioPlayer extends Service implements AudioPlayer {
     @Override
     public void stop() {
         if (!this.released) {
-            //mediaNotificationManager.setIsShowing(false);
             stopForeground(true);
             player.stop(true);
         }
@@ -319,7 +318,6 @@ public class ForegroundAudioPlayer extends Service implements AudioPlayer {
         if (!this.released) {
             if (this.playing) {
                 stopForeground(true);
-                //mediaNotificationManager.setIsShowing(false);
             }
             this.initialized = false;
             this.buffering = false;
