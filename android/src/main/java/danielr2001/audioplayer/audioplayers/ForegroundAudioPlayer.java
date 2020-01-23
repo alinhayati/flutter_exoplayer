@@ -452,6 +452,7 @@ public class ForegroundAudioPlayer extends Service implements AudioPlayer {
                     case Player.STATE_BUFFERING: {
                         // buffering
                         buffering = true;
+                        playerNotificationManager.setUseChronometer(false);
                         ref.handleStateChange(foregroundAudioPlayer, PlayerState.BUFFERING);
                         break;
                     }
