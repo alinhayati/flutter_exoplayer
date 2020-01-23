@@ -149,7 +149,7 @@ public class ForegroundAudioPlayer extends Service implements AudioPlayer {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             NotificationChannel serviceChannel = new NotificationChannel(
                     CHANNEL_ID,
-                    "Playback",
+                    getString(R.string.notification_channel_name),
                     NotificationManager.IMPORTANCE_DEFAULT
             );
             serviceChannel.setSound(null, null);
@@ -754,7 +754,7 @@ public class ForegroundAudioPlayer extends Service implements AudioPlayer {
 
     public void setNotificationBar() {
         playerNotificationManager = PlayerNotificationManager.createWithNotificationChannel(
-                context, CHANNEL_ID,R.string.exo_track_selection_none, NOTIFICATION_ID, new DescriptionAdapter(audioObject, context));
+                context, CHANNEL_ID, R.string.notification_channel_name, NOTIFICATION_ID, new DescriptionAdapter(audioObject, context));
 
         playerNotificationManager.setPriority(NotificationCompat.PRIORITY_HIGH);
         playerNotificationManager.setMediaSessionToken(mediaSession.getSessionToken());
@@ -772,6 +772,7 @@ public class ForegroundAudioPlayer extends Service implements AudioPlayer {
         int icon = this.context.getResources().getIdentifier(audioObject.getSmallIconFileName(), "drawable",
                 this.context.getPackageName());
         playerNotificationManager.setSmallIcon(icon);
+        playerNotificationManager.setColorized(true);
         playerNotificationManager.setUseStopAction(false);
         playerNotificationManager.setUseNavigationActions(false);
         playerNotificationManager.setUseNavigationActionsInCompactView(true);
