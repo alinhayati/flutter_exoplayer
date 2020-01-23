@@ -754,7 +754,7 @@ public class ForegroundAudioPlayer extends Service implements AudioPlayer {
 
     public void setNotificationBar() {
         playerNotificationManager = PlayerNotificationManager.createWithNotificationChannel(
-                context, CHANNEL_ID, R.string.notification_channel_name, NOTIFICATION_ID, new DescriptionAdapter(audioObject, context));
+                context, CHANNEL_ID, R.string.notification_channel_name, NOTIFICATION_ID, new DescriptionAdapter(audioObject, activity));
 
         playerNotificationManager.setPriority(NotificationCompat.PRIORITY_HIGH);
         playerNotificationManager.setMediaSessionToken(mediaSession.getSessionToken());

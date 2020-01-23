@@ -1,7 +1,7 @@
 package danielr2001.audioplayer.notifications;
 
+import android.app.Activity;
 import android.app.PendingIntent;
-import android.content.Context;
 import android.content.Intent;
 import android.graphics.Bitmap;
 import android.os.StrictMode;
@@ -21,12 +21,12 @@ import danielr2001.audioplayer.models.AudioObject;
 public class DescriptionAdapter implements PlayerNotificationManager.MediaDescriptionAdapter {
 
     private AudioObject audioObject;
-    private Context context;
+    private Activity activity;
     private PendingIntent currentContentPendingIntent = null;
 
-    public DescriptionAdapter(AudioObject audioObject, Context context) {
+    public DescriptionAdapter(AudioObject audioObject, Activity activity) {
         this.audioObject = audioObject;
-        this.context = context;
+        this.activity = activity;
         StrictMode.ThreadPolicy policy = new StrictMode.ThreadPolicy.Builder()
                 .detectAll()
                 .penaltyLog()
@@ -63,10 +63,10 @@ public class DescriptionAdapter implements PlayerNotificationManager.MediaDescri
 
     private PendingIntent createCurrentContentPendingIntent() {
         if (currentContentPendingIntent != null) return currentContentPendingIntent;
-        Intent notificationIntent = new Intent(context, context.getClass());
+        Intent notificationIntent = new Intent(activity, activity.getClass());
         notificationIntent.setFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP);
         notificationIntent.setFlags(Intent.FLAG_ACTIVITY_SINGLE_TOP);
-        currentContentPendingIntent = PendingIntent.getActivity(context, 0, notificationIntent, 0);
+        currentContentPendingIntent = PendingIntent.getActivity(activity, 0, notificationIntent, 0);
         return currentContentPendingIntent;
     }
 
