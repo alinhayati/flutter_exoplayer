@@ -74,7 +74,6 @@ public class BackgroundAudioPlayer implements AudioPlayer {
     private ArrayList<AudioObject> audioObjects;
     private AudioObject audioObject;
     private Cache cache;
-    private InsightCustomLoadErrorPolicy insightCustomLoadErrorPolicy;
 
     @Override
     public void initAudioPlayer(AudioPlayerPlugin ref, Activity activity, String playerId) {
@@ -108,7 +107,7 @@ public class BackgroundAudioPlayer implements AudioPlayer {
         DataSource.Factory offlineDataSourceFactory = new DefaultDataSourceFactory(this.context, Util.getUserAgent(this.context, "exoPlayerLibrary"));
         DataSource.Factory onlineDataSourceFactory = new InsightCacheDataSourceFactory(this.context, cache);
         // playlist/single audio load
-        insightCustomLoadErrorPolicy = new InsightCustomLoadErrorPolicy();
+        InsightCustomLoadErrorPolicy insightCustomLoadErrorPolicy = new InsightCustomLoadErrorPolicy();
         if (playerMode == PlayerMode.PLAYLIST) {
             ConcatenatingMediaSource concatenatingMediaSource = new ConcatenatingMediaSource();
             for (AudioObject audioObject : audioObjects) {
