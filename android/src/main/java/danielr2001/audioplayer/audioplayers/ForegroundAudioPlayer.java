@@ -90,6 +90,7 @@ public class ForegroundAudioPlayer extends Service implements AudioPlayer {
     private ArrayList<AudioObject> audioObjects;
     private AudioObject audioObject;
     private Cache cache;
+    private InsightCustomLoadErrorPolicy insightCustomLoadErrorPolicy;
 
     @Nullable
     @Override
@@ -274,6 +275,7 @@ public class ForegroundAudioPlayer extends Service implements AudioPlayer {
         DataSource.Factory offlineDataSourceFactory = new DefaultDataSourceFactory(this, Util.getUserAgent(this.context, "exoPlayerLibrary"));
         DataSource.Factory onlineDataSourceFactory = new InsightCacheDataSourceFactory(this.context, cache);
         // playlist/single audio load
+        insightCustomLoadErrorPolicy = new InsightCustomLoadErrorPolicy();
         if (this.playerMode == PlayerMode.PLAYLIST) {
             ConcatenatingMediaSource concatenatingMediaSource = new ConcatenatingMediaSource();
             for (AudioObject audioObject : audioObjects) {
@@ -281,9 +283,11 @@ public class ForegroundAudioPlayer extends Service implements AudioPlayer {
                 MediaSource mediaSource;
                 if (URLUtil.isHttpsUrl(url) || URLUtil.isHttpUrl(url)) {
                     mediaSource = new ProgressiveMediaSource.Factory(onlineDataSourceFactory)
+                            .setLoadErrorHandlingPolicy(insightCustomLoadErrorPolicy)
                             .createMediaSource(Uri.parse(url));
                 } else {
                     mediaSource = new ProgressiveMediaSource.Factory(offlineDataSourceFactory)
+                            .setLoadErrorHandlingPolicy(insightCustomLoadErrorPolicy)
                             .createMediaSource(Uri.parse(url));
                 }
                 concatenatingMediaSource.addMediaSource(mediaSource);
@@ -297,9 +301,11 @@ public class ForegroundAudioPlayer extends Service implements AudioPlayer {
             MediaSource mediaSource;
             if (URLUtil.isHttpsUrl(url) || URLUtil.isHttpUrl(url)) {
                 mediaSource = new ProgressiveMediaSource.Factory(onlineDataSourceFactory)
+                        .setLoadErrorHandlingPolicy(insightCustomLoadErrorPolicy)
                         .createMediaSource(Uri.parse(url));
             } else {
                 mediaSource = new ProgressiveMediaSource.Factory(offlineDataSourceFactory)
+                        .setLoadErrorHandlingPolicy(insightCustomLoadErrorPolicy)
                         .createMediaSource(Uri.parse(url));
             }
             player.prepare(mediaSource, true, false);
