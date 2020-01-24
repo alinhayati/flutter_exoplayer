@@ -5,7 +5,8 @@ import com.google.android.exoplayer2.upstream.DefaultLoadErrorHandlingPolicy;
 import com.google.android.exoplayer2.upstream.HttpDataSource;
 import java.io.IOException;
 
-public class InsightCustomLoadErrorPolicy extends DefaultLoadErrorHandlingPolicy {
+public class InsightLoadErrorPolicy extends DefaultLoadErrorHandlingPolicy {
+
 
     @Override
     public long getBlacklistDurationMsFor(int dataType, long loadDurationMs, IOException exception, int errorCount) {
