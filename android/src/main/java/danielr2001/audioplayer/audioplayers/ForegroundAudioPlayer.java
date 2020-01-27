@@ -34,6 +34,7 @@ import com.google.android.exoplayer2.analytics.AnalyticsListener;
 import com.google.android.exoplayer2.audio.AudioAttributes;
 import com.google.android.exoplayer2.database.ExoDatabaseProvider;
 import com.google.android.exoplayer2.decoder.DecoderCounters;
+import com.google.android.exoplayer2.ext.mediasession.MediaSessionConnector;
 import com.google.android.exoplayer2.metadata.Metadata;
 import com.google.android.exoplayer2.source.ConcatenatingMediaSource;
 import com.google.android.exoplayer2.source.MediaSource;
@@ -94,6 +95,7 @@ public class ForegroundAudioPlayer extends Service implements AudioPlayer {
     Activity activity;
     public static final int NOTIFICATION_ID = 1;
     public static final String CHANNEL_ID = "Playback";
+    MediaSessionConnector mediaSessionConnector;
 
     @Nullable
     @Override
@@ -230,6 +232,9 @@ public class ForegroundAudioPlayer extends Service implements AudioPlayer {
         }
 
         playerNotificationManager.setPlayer(player);
+        // This allows things like google assistant, android auto, tv, etc. work with the player (e.g. 'Ok google, pause')
+        mediaSessionConnector = new MediaSessionConnector(mediaSession);
+        mediaSessionConnector.setPlayer(player);
 
         // handle audio focus
         if (this.respectAudioFocus) { // ! TODO catch duck pause!
@@ -334,6 +339,7 @@ public class ForegroundAudioPlayer extends Service implements AudioPlayer {
             this.cache = null;
             this.audioObject = null;
             this.audioObjects = null;
+            mediaSessionConnector.setPlayer(null);
             player.release();
             player = null;
             ref.handleStateChange(this, PlayerState.RELEASED);
