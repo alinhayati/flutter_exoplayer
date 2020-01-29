@@ -192,6 +192,8 @@ public class ForegroundAudioPlayer extends Service implements AudioPlayer {
                     new LeastRecentlyUsedCacheEvictor(InsightExoPlayerConstants.DEFAULT_MEDIA_CACHE_SIZE),
                     new ExoDatabaseProvider(context));
         }
+        // This allows things like google assistant, android auto, tv, etc. work with the player (e.g. 'Ok google, pause')
+        mediaSessionConnector = new MediaSessionConnector(mediaSession);
         setNotificationBar();
         player = ExoPlayerFactory.newSimpleInstance(this.context, trackSelector, loadControl);
         player.setForegroundMode(true);
@@ -235,25 +237,6 @@ public class ForegroundAudioPlayer extends Service implements AudioPlayer {
         }
 
         playerNotificationManager.setPlayer(player);
-        // This allows things like google assistant, android auto, tv, etc. work with the player (e.g. 'Ok google, pause')
-        mediaSessionConnector = new MediaSessionConnector(mediaSession);
-        if(audioObject != null && audioObject.getNotificationActionMode() != null) {
-            if (audioObject.getNotificationActionMode() != NotificationDefaultActions.FORWARD ||
-                    audioObject.getNotificationActionMode() != NotificationDefaultActions.BACKWARD ||
-                    audioObject.getNotificationActionMode() != NotificationDefaultActions.ALL) {
-                mediaSessionConnector.setQueueNavigator(new TimelineQueueNavigator(mediaSession) {
-                    @Override
-                    public MediaDescriptionCompat getMediaDescription(Player player, int windowIndex) {
-                        Bundle extras = new Bundle();
-                        extras.putInt(MediaMetadataCompat.METADATA_KEY_DURATION, -1);
-
-                        return new MediaDescriptionCompat.Builder()
-                                .setExtras(extras)
-                                .build();
-                    }
-                });
-            }
-        }
         mediaSessionConnector.setPlayer(player);
 
         // handle audio focus
@@ -819,6 +802,19 @@ public class ForegroundAudioPlayer extends Service implements AudioPlayer {
                     audioObject.getNotificationActionMode() == NotificationDefaultActions.ALL) {
                 playerNotificationManager.setFastForwardIncrementMs(15000);
                 playerNotificationManager.setRewindIncrementMs(15000);
+            } else {
+                mediaSessionConnector.setQueueNavigator(new TimelineQueueNavigator(mediaSession) {
+                    @Override
+                    public MediaDescriptionCompat getMediaDescription(Player player, int windowIndex) {
+                        Bundle extras = new Bundle();
+                        extras.putInt(MediaMetadataCompat.METADATA_KEY_DURATION, -1);
+
+                        return new MediaDescriptionCompat.Builder()
+                                .setMediaId(CHANNEL_ID)
+                                .setExtras(extras)
+                                .build();
+                    }
+                });
             }
         }
     }
