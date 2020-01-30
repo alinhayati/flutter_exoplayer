@@ -12,7 +12,9 @@ import android.media.MediaMetadata;
 import android.net.Uri;
 import android.os.Binder;
 import android.os.Build;
+import android.os.Bundle;
 import android.os.IBinder;
+import android.support.v4.media.MediaDescriptionCompat;
 import android.support.v4.media.MediaMetadataCompat;
 import android.support.v4.media.session.MediaSessionCompat;
 import android.util.Log;
@@ -35,6 +37,7 @@ import com.google.android.exoplayer2.audio.AudioAttributes;
 import com.google.android.exoplayer2.database.ExoDatabaseProvider;
 import com.google.android.exoplayer2.decoder.DecoderCounters;
 import com.google.android.exoplayer2.ext.mediasession.MediaSessionConnector;
+import com.google.android.exoplayer2.ext.mediasession.TimelineQueueNavigator;
 import com.google.android.exoplayer2.metadata.Metadata;
 import com.google.android.exoplayer2.source.ConcatenatingMediaSource;
 import com.google.android.exoplayer2.source.MediaSource;
@@ -189,6 +192,8 @@ public class ForegroundAudioPlayer extends Service implements AudioPlayer {
                     new LeastRecentlyUsedCacheEvictor(InsightExoPlayerConstants.DEFAULT_MEDIA_CACHE_SIZE),
                     new ExoDatabaseProvider(context));
         }
+        // This allows things like google assistant, android auto, tv, etc. work with the player (e.g. 'Ok google, pause')
+        mediaSessionConnector = new MediaSessionConnector(mediaSession);
         setNotificationBar();
         player = ExoPlayerFactory.newSimpleInstance(this.context, trackSelector, loadControl);
         player.setForegroundMode(true);
@@ -232,8 +237,6 @@ public class ForegroundAudioPlayer extends Service implements AudioPlayer {
         }
 
         playerNotificationManager.setPlayer(player);
-        // This allows things like google assistant, android auto, tv, etc. work with the player (e.g. 'Ok google, pause')
-        mediaSessionConnector = new MediaSessionConnector(mediaSession);
         mediaSessionConnector.setPlayer(player);
 
         // handle audio focus
@@ -781,9 +784,11 @@ public class ForegroundAudioPlayer extends Service implements AudioPlayer {
 
         playerNotificationManager.setPriority(NotificationCompat.PRIORITY_HIGH);
         playerNotificationManager.setMediaSessionToken(mediaSession.getSessionToken());
-        int icon = this.context.getResources().getIdentifier(audioObject.getSmallIconFileName(), "drawable",
-                this.context.getPackageName());
-        playerNotificationManager.setSmallIcon(icon);
+        if(audioObject != null && audioObject.getSmallIconFileName() != null) {
+            int icon = this.context.getResources().getIdentifier(audioObject.getSmallIconFileName(), "drawable",
+                    this.context.getPackageName());
+            playerNotificationManager.setSmallIcon(icon);
+        }
         playerNotificationManager.setColorized(true);
         playerNotificationManager.setUseStopAction(false);
         playerNotificationManager.setUseNavigationActions(false);
@@ -791,11 +796,26 @@ public class ForegroundAudioPlayer extends Service implements AudioPlayer {
         playerNotificationManager.setFastForwardIncrementMs(0);
         playerNotificationManager.setRewindIncrementMs(0);
 
-        if (audioObject.getNotificationActionMode() == NotificationDefaultActions.FORWARD ||
-                audioObject.getNotificationActionMode() == NotificationDefaultActions.BACKWARD ||
-                audioObject.getNotificationActionMode() == NotificationDefaultActions.ALL) {
-            playerNotificationManager.setFastForwardIncrementMs(15000);
-            playerNotificationManager.setRewindIncrementMs(15000);
+        if(audioObject != null && audioObject.getNotificationActionMode() != null) {
+            if (audioObject.getNotificationActionMode() == NotificationDefaultActions.FORWARD ||
+                    audioObject.getNotificationActionMode() == NotificationDefaultActions.BACKWARD ||
+                    audioObject.getNotificationActionMode() == NotificationDefaultActions.ALL) {
+                playerNotificationManager.setFastForwardIncrementMs(15000);
+                playerNotificationManager.setRewindIncrementMs(15000);
+            } else {
+                mediaSessionConnector.setQueueNavigator(new TimelineQueueNavigator(mediaSession) {
+                    @Override
+                    public MediaDescriptionCompat getMediaDescription(Player player, int windowIndex) {
+                        Bundle extras = new Bundle();
+                        extras.putInt(MediaMetadataCompat.METADATA_KEY_DURATION, -1);
+
+                        return new MediaDescriptionCompat.Builder()
+                                .setMediaId(CHANNEL_ID)
+                                .setExtras(extras)
+                                .build();
+                    }
+                });
+            }
         }
     }
 }
