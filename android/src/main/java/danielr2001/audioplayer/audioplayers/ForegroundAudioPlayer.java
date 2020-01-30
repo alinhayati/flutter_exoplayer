@@ -784,11 +784,7 @@ public class ForegroundAudioPlayer extends Service implements AudioPlayer {
 
         playerNotificationManager.setPriority(NotificationCompat.PRIORITY_HIGH);
         playerNotificationManager.setMediaSessionToken(mediaSession.getSessionToken());
-        if(audioObject != null && audioObject.getSmallIconFileName() != null) {
-            int icon = this.context.getResources().getIdentifier(audioObject.getSmallIconFileName(), "drawable",
-                    this.context.getPackageName());
-            playerNotificationManager.setSmallIcon(icon);
-        }
+        playerNotificationManager.setSmallIcon(R.drawable.ic_notification);
         playerNotificationManager.setColorized(true);
         playerNotificationManager.setUseStopAction(false);
         playerNotificationManager.setUseNavigationActions(false);
