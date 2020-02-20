@@ -8,8 +8,10 @@ import android.app.Activity;
 import android.content.Context;
 
 import java.util.ArrayList;
+import java.util.List;
 
 public interface AudioPlayer {
+    int DEFAULT_MAX_ATTEMPTS_PER_URL = 2;
 
     //initializers
     void initAudioPlayer(AudioPlayerPlugin ref, Activity activity, String playerId);
@@ -17,7 +19,7 @@ public interface AudioPlayer {
     void initExoPlayer(int index);
 
     //player contols
-    void play(AudioObject audioObject); 
+    void play(AudioObject audioObject, List<String> fallbackUrlList, int maxUrlAttempts);
 
     void playAll(ArrayList<AudioObject> audioObjects, int index); 
 

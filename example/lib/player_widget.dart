@@ -9,6 +9,8 @@ const imageUrl1 = "https://www.bensound.com/bensound-img/buddy.jpg";
 const imageUrl2 = "https://www.bensound.com/bensound-img/epic.jpg";
 const imageUrl3 = "https://www.bensound.com/bensound-img/onceagain.jpg";
 
+const fallbackList = ["https://staticmp3.insighttimer.com/preview/wrongname.mp3", "https://staticmp3.insighttimer.com/preview/e1s0e0h4r0z7v9a7c0k9b7e5k9s0b2l0u1d3s8t2-v1.mp3"];
+
 class PlayerWidget extends StatefulWidget {
   final String url;
   final List<String> urls;
@@ -308,6 +310,8 @@ class _PlayerWidgetState extends State<PlayerWidget> {
     if (url != null) {
       final Result result = await _audioPlayer.play(
         url,
+        fallbackUrls: fallbackList,
+        maxAttemptsPerUrl: 4,
         repeatMode: true,
         respectAudioFocus: false,
         playerMode: PlayerMode.BACKGROUND,

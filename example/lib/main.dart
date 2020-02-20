@@ -6,6 +6,7 @@ import 'package:path_provider/path_provider.dart';
 import 'player_widget.dart';
 import 'package:http/http.dart';
 
+//const kUrl1 = 'https://staticmp3.insighttimer.com/preview/e1s0e0h4r0z7v9a7c0k9b7e5k9s0b2l0u1d3s8t2-v1.mp3';
 const kUrl1 = 'https://www.bensound.org/bensound-music/bensound-buddy.mp3';
 const kUrl2 = 'https://www.bensound.org/bensound-music/bensound-epic.mp3';
 const kUrl3 = 'https://www.bensound.org/bensound-music/bensound-onceagain.mp3';

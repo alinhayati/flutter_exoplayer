@@ -11,6 +11,7 @@ public class AudioObject {
     private String smallIconFileName;
     private String title;
     private String subTitle;
+
     private String largeIconUrl;
     private boolean isLocal;
     private NotificationDefaultActions notificationDefaultActions;
@@ -79,5 +80,10 @@ public class AudioObject {
 
     public void setLargeIcon(Bitmap bitmap){
         this.largeIcon = bitmap;
+    }
+
+
+    public void setUrl(String url) {
+        this.url = url;
     }
 }

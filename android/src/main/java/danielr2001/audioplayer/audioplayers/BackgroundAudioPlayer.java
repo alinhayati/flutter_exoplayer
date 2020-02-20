@@ -40,6 +40,7 @@ import com.google.android.exoplayer2.util.Util;
 import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.List;
 
 import danielr2001.audioplayer.AudioPlayerPlugin;
 import danielr2001.audioplayer.enums.PlayerMode;
@@ -48,7 +49,7 @@ import danielr2001.audioplayer.interfaces.AudioPlayer;
 import danielr2001.audioplayer.models.AudioObject;
 
 public class BackgroundAudioPlayer implements AudioPlayer {
-
+    private static final String TAG = "BackgroundAudioPlayer";
     private Context context;
     private AudioPlayerPlugin ref;
     private BackgroundAudioPlayer backgroundAudioPlayer;
@@ -74,6 +75,11 @@ public class BackgroundAudioPlayer implements AudioPlayer {
     private ArrayList<AudioObject> audioObjects;
     private AudioObject audioObject;
     private Cache cache;
+
+    private List<String> fallbackUrlList;
+    private int currentFallbackUrlIndex = -1;
+    private int maxAttemptsPerUrl = DEFAULT_MAX_ATTEMPTS_PER_URL;
+    private int attempts = 1;
 
     @Override
     public void initAudioPlayer(AudioPlayerPlugin ref, Activity activity, String playerId) {
@@ -157,16 +163,18 @@ public class BackgroundAudioPlayer implements AudioPlayer {
     }
 
     @Override
-    public void play(AudioObject audioObject) {
+    public void play(AudioObject audioObject, List<String> fallbackUrlList, int maxAttemptsPerUrl) {
         if (this.completed || this.stopped) {
             this.resume();
         } else {
             this.released = false;
-
             this.audioObject = audioObject;
-            this.initExoPlayer(0);
-            initEventListeners();
-            player.setPlayWhenReady(true);
+            this.fallbackUrlList = fallbackUrlList;
+            if(maxAttemptsPerUrl > 0) this.maxAttemptsPerUrl = maxAttemptsPerUrl;
+            this.attempts = 1;
+            Log.d(TAG, "play: fallbackUrlList=" + fallbackUrlList);
+            this.currentFallbackUrlIndex = -1;
+            initialiseAndPlay();
         }
     }
 
@@ -241,6 +249,10 @@ public class BackgroundAudioPlayer implements AudioPlayer {
             this.cache.release();
             this.cache = null;
             this.audioObject = null;
+            this.fallbackUrlList = null;
+            this.maxAttemptsPerUrl = DEFAULT_MAX_ATTEMPTS_PER_URL;
+            this.attempts = 1;
+            this.currentFallbackUrlIndex = -1;
             this.audioObjects = null;
             player.release();
             player = null;
@@ -403,7 +415,6 @@ public class BackgroundAudioPlayer implements AudioPlayer {
                         break;
                     }
                     case Player.STATE_IDLE: {
-                        // unable to fetch data packet from URL
                         buffering = true;
                         playing = false;
                         stopped = false;
@@ -417,69 +428,89 @@ public class BackgroundAudioPlayer implements AudioPlayer {
         });
     }
 
+    private void initialiseAndPlay() {
+        this.initExoPlayer(0);
+        initEventListeners();
+        player.setPlayWhenReady(true);
+    }
+
+    private void playFallbackAudioUrl() {
+        String fallbackUrl = getFallbackUrl();
+        if(fallbackUrl == null) return;
+        audioObject.setUrl(fallbackUrl);
+        initialiseAndPlay();
+    }
+
+    private String getFallbackUrl(){
+        if(fallbackUrlList == null || fallbackUrlList.isEmpty() || currentFallbackUrlIndex++>(fallbackUrlList.size()-1)) return null;
+        Log.d(TAG, "getFallbackUrl: fallbackUrlList="+fallbackUrlList);
+        Log.d(TAG, "getFallbackUrl: currentFallbackUrlIndex="+currentFallbackUrlIndex);
+        return fallbackUrlList.get(currentFallbackUrlIndex);
+    }
+
     private void addCustomListeners() {
         player.addAnalyticsListener(new AnalyticsListener() {
             @Override
             public void onPlayerStateChanged(EventTime eventTime, boolean playWhenReady,
                                              int playbackState) {
-                Log.d("BackgroundAudioPlayer",
+                Log.v(TAG,
                         "onPlayerStateChanged:\neventTime=" + eventTime.currentPlaybackPositionMs + "\nplayWhenReady=" + playWhenReady + " \nplaybackState=" + playbackState);
             }
 
             @Override
             public void onTimelineChanged(EventTime eventTime, int reason) {
-                Log.d("BackgroundAudioPlayer",
+                Log.v(TAG,
                         "onTimelineChanged:\neventTime=" + eventTime.currentPlaybackPositionMs +
                                 "\nreason=" + reason);
             }
 
             @Override
             public void onPositionDiscontinuity(EventTime eventTime, int reason) {
-                Log.d("BackgroundAudioPlayer",
+                Log.v(TAG,
                         "onPositionDiscontinuity:\neventTime=" + eventTime.currentPlaybackPositionMs + "\nreason=" + reason);
             }
 
             @Override
             public void onSeekStarted(EventTime eventTime) {
-                Log.d("BackgroundAudioPlayer",
+                Log.v(TAG,
                         "onSeekStarted:\neventTime=" + eventTime.currentPlaybackPositionMs);
             }
 
             @Override
             public void onSeekProcessed(EventTime eventTime) {
-                Log.d("BackgroundAudioPlayer",
+                Log.v(TAG,
                         "onSeekProcessed:\neventTime=" + eventTime.currentPlaybackPositionMs);
             }
 
             @Override
             public void onPlaybackParametersChanged(EventTime eventTime,
                                                     PlaybackParameters playbackParameters) {
-                Log.d("BackgroundAudioPlayer",
+                Log.v(TAG,
                         "onPlaybackParametersChanged:\neventTime=" + eventTime.currentPlaybackPositionMs + " PlaybackParameters:" + "\n    pitch=" + playbackParameters.pitch + "\n    skipSilence=" + playbackParameters.skipSilence + "\n     speed=" + playbackParameters.speed);
             }
 
             @Override
             public void onRepeatModeChanged(EventTime eventTime, int repeatMode) {
-                Log.d("BackgroundAudioPlayer",
+                Log.v(TAG,
                         "onRepeatModeChanged:\neventTime=" + eventTime.currentPlaybackPositionMs + "\nrepeatMode=" + repeatMode);
             }
 
             @Override
             public void onShuffleModeChanged(EventTime eventTime, boolean shuffleModeEnabled) {
-                Log.d("BackgroundAudioPlayer",
+                Log.v(TAG,
                         "onShuffleModeChanged:\neventTime=" + eventTime.currentPlaybackPositionMs + "\nrepeatMode=" + shuffleModeEnabled);
             }
 
             @Override
             public void onLoadingChanged(EventTime eventTime, boolean isLoading) {
-                Log.d("BackgroundAudioPlayer",
+                Log.v(TAG,
                         "onLoadingChanged:\neventTime=" + eventTime.currentPlaybackPositionMs +
                                 "\nrepeatMode=" + isLoading);
             }
 
             @Override
             public void onPlayerError(EventTime eventTime, ExoPlaybackException error) {
-                Log.d("BackgroundAudioPlayer",
+                Log.v(TAG,
                         "onPlayerError:\neventTime=" + eventTime.currentPlaybackPositionMs +
                                 "\nerror=" + error.getMessage());
             }
@@ -487,14 +518,14 @@ public class BackgroundAudioPlayer implements AudioPlayer {
             @Override
             public void onTracksChanged(EventTime eventTime, TrackGroupArray trackGroups,
                                         TrackSelectionArray trackSelections) {
-                Log.d("BackgroundAudioPlayer", "onTracksChanged");
+                Log.v(TAG, "onTracksChanged");
             }
 
             @Override
             public void onLoadStarted(EventTime eventTime,
                                       MediaSourceEventListener.LoadEventInfo loadEventInfo,
                                       MediaSourceEventListener.MediaLoadData mediaLoadData) {
-                Log.d("BackgroundAudioPlayer",
+                Log.v(TAG,
                         "onLoadStarted:\neventTime=" + eventTime.currentPlaybackPositionMs +
                                 "\nloadEventInfo:" + "\n  bytes loaded:" + loadEventInfo.bytesLoaded + "\n    dataSpec:" + "\n       key=" + loadEventInfo.dataSpec.key + "\n       absoluteStreamPosition=" + loadEventInfo.dataSpec.absoluteStreamPosition + "\n       flags=" + loadEventInfo.dataSpec.flags + "\n       uri=" + loadEventInfo.dataSpec.uri + "\n       httpMethodString=" + loadEventInfo.dataSpec.getHttpMethodString() + "\n    elapsedRealtimeMs:" + loadEventInfo.elapsedRealtimeMs + "\n    loadDurationMs:" + loadEventInfo.loadDurationMs + "\n    entrySet:" + loadEventInfo.responseHeaders.entrySet() + "\nMediaLoadData:" + "\n    dataType=" + mediaLoadData.dataType + "\n    mediaEndTimeMs=" + mediaLoadData.mediaEndTimeMs + "\n    mediaStartTimeMs=" + mediaLoadData.mediaStartTimeMs + "\n    trackSelectionReason=" + mediaLoadData.trackSelectionReason + "\n    trackType=" + mediaLoadData.trackType);
             }
@@ -503,7 +534,7 @@ public class BackgroundAudioPlayer implements AudioPlayer {
             public void onLoadCompleted(EventTime eventTime,
                                         MediaSourceEventListener.LoadEventInfo loadEventInfo,
                                         MediaSourceEventListener.MediaLoadData mediaLoadData) {
-                Log.d("BackgroundAudioPlayer",
+                Log.v(TAG,
                         "onLoadCompleted:\neventTime=" + eventTime.currentPlaybackPositionMs +
                                 "\nloadEventInfo:" + "\n  bytes loaded:" + loadEventInfo.bytesLoaded + "\n    dataSpec:" + "\n       key=" + loadEventInfo.dataSpec.key + "\n       absoluteStreamPosition=" + loadEventInfo.dataSpec.absoluteStreamPosition + "\n       flags=" + loadEventInfo.dataSpec.flags + "\n       uri=" + loadEventInfo.dataSpec.uri + "\n       httpMethodString=" + loadEventInfo.dataSpec.getHttpMethodString() + "\n    elapsedRealtimeMs:" + loadEventInfo.elapsedRealtimeMs + "\n    loadDurationMs:" + loadEventInfo.loadDurationMs + "\n    entrySet:" + loadEventInfo.responseHeaders.entrySet() + "\nMediaLoadData:" + "\n    dataType=" + mediaLoadData.dataType + "\n    mediaEndTimeMs=" + mediaLoadData.mediaEndTimeMs + "\n    mediaStartTimeMs=" + mediaLoadData.mediaStartTimeMs + "\n    trackSelectionReason=" + mediaLoadData.trackSelectionReason + "\n    trackType=" + mediaLoadData.trackType);
             }
@@ -512,7 +543,7 @@ public class BackgroundAudioPlayer implements AudioPlayer {
             public void onLoadCanceled(EventTime eventTime,
                                        MediaSourceEventListener.LoadEventInfo loadEventInfo,
                                        MediaSourceEventListener.MediaLoadData mediaLoadData) {
-                Log.d("BackgroundAudioPlayer",
+                Log.v(TAG,
                         "onLoadCanceled:\neventTime=" + eventTime.currentPlaybackPositionMs +
                                 "\nloadEventInfo:" + "\n  bytes loaded:" + loadEventInfo.bytesLoaded + "\n    dataSpec:" + "\n       key=" + loadEventInfo.dataSpec.key + "\n       absoluteStreamPosition=" + loadEventInfo.dataSpec.absoluteStreamPosition + "\n       flags=" + loadEventInfo.dataSpec.flags + "\n       uri=" + loadEventInfo.dataSpec.uri + "\n       httpMethodString=" + loadEventInfo.dataSpec.getHttpMethodString() + "\n    elapsedRealtimeMs:" + loadEventInfo.elapsedRealtimeMs + "\n    loadDurationMs:" + loadEventInfo.loadDurationMs + "\n    entrySet:" + loadEventInfo.responseHeaders.entrySet() + "\nMediaLoadData:" + "\n    dataType=" + mediaLoadData.dataType + "\n    mediaEndTimeMs=" + mediaLoadData.mediaEndTimeMs + "\n    mediaStartTimeMs=" + mediaLoadData.mediaStartTimeMs + "\n    trackSelectionReason=" + mediaLoadData.trackSelectionReason + "\n    trackType=" + mediaLoadData.trackType);
             }
@@ -522,94 +553,102 @@ public class BackgroundAudioPlayer implements AudioPlayer {
                                     MediaSourceEventListener.LoadEventInfo loadEventInfo,
                                     MediaSourceEventListener.MediaLoadData mediaLoadData,
                                     IOException error, boolean wasCanceled) {
-                Log.d("BackgroundAudioPlayer",
+                Log.v(TAG,
                         "onLoadError:\neventTime=" + eventTime.currentPlaybackPositionMs +
                                 "\nloadEventInfo:" + "\n  bytes loaded:" + loadEventInfo.bytesLoaded + "\n    dataSpec:" + "\n       key=" + loadEventInfo.dataSpec.key + "\n       absoluteStreamPosition=" + loadEventInfo.dataSpec.absoluteStreamPosition + "\n       flags=" + loadEventInfo.dataSpec.flags + "\n       uri=" + loadEventInfo.dataSpec.uri + "\n       httpMethodString=" + loadEventInfo.dataSpec.getHttpMethodString() + "\n    elapsedRealtimeMs:" + loadEventInfo.elapsedRealtimeMs + "\n    loadDurationMs:" + loadEventInfo.loadDurationMs + "\n    entrySet:" + loadEventInfo.responseHeaders.entrySet() + "\nMediaLoadData:" + "\n    dataType=" + mediaLoadData.dataType + "\n    mediaEndTimeMs=" + mediaLoadData.mediaEndTimeMs + "\n    mediaStartTimeMs=" + mediaLoadData.mediaStartTimeMs + "\n    trackSelectionReason=" + mediaLoadData.trackSelectionReason + "\n    trackType=" + mediaLoadData.trackType + "\n   error=" + error.getMessage() + "\n  wasCanceled=" + wasCanceled);
+                if(attempts<= maxAttemptsPerUrl) {
+                    Log.d(TAG, "Attempt" + attempts + ": "+loadEventInfo.dataSpec.uri);
+                    attempts++;
+                    return;
+                }
+                attempts = 1;
+                stop();
+                playFallbackAudioUrl();
             }
 
             @Override
             public void onDownstreamFormatChanged(EventTime eventTime,
                                                   MediaSourceEventListener.MediaLoadData mediaLoadData) {
-                Log.d("BackgroundAudioPlayer",
+                Log.v(TAG,
                         "onDownstreamFormatChanged:\neventTime=" + eventTime.currentPlaybackPositionMs + "\nMediaLoadData:" + "\n    dataType=" + mediaLoadData.dataType + "\n    mediaEndTimeMs=" + mediaLoadData.mediaEndTimeMs + "\n    mediaStartTimeMs=" + mediaLoadData.mediaStartTimeMs + "\n    trackSelectionReason=" + mediaLoadData.trackSelectionReason + "\n    trackType=" + mediaLoadData.trackType);
             }
 
             @Override
             public void onUpstreamDiscarded(EventTime eventTime,
                                             MediaSourceEventListener.MediaLoadData mediaLoadData) {
-                Log.d("BackgroundAudioPlayer",
+                Log.v(TAG,
                         "onUpstreamDiscarded:\neventTime=" + eventTime.currentPlaybackPositionMs + "\nMediaLoadData:" + "\n    dataType=" + mediaLoadData.dataType + "\n    mediaEndTimeMs=" + mediaLoadData.mediaEndTimeMs + "\n    mediaStartTimeMs=" + mediaLoadData.mediaStartTimeMs + "\n    trackSelectionReason=" + mediaLoadData.trackSelectionReason + "\n    trackType=" + mediaLoadData.trackType);
             }
 
             @Override
             public void onMediaPeriodCreated(EventTime eventTime) {
-                Log.d("BackgroundAudioPlayer",
+                Log.v(TAG,
                         "onMediaPeriodCreated:\neventTime=" + eventTime.currentPlaybackPositionMs);
             }
 
             @Override
             public void onMediaPeriodReleased(EventTime eventTime) {
-                Log.d("BackgroundAudioPlayer",
+                Log.v(TAG,
                         "onMediaPeriodReleased:\neventTime=" + eventTime.currentPlaybackPositionMs);
             }
 
             @Override
             public void onReadingStarted(EventTime eventTime) {
-                Log.d("BackgroundAudioPlayer",
+                Log.v(TAG,
                         "onReadingStarted:\neventTime=" + eventTime.currentPlaybackPositionMs);
             }
 
             @Override
             public void onBandwidthEstimate(EventTime eventTime, int totalLoadTimeMs,
                                             long totalBytesLoaded, long bitrateEstimate) {
-                Log.d("BackgroundAudioPlayer",
+                Log.v(TAG,
                         "onBandwidthEstimate:\neventTime=" + eventTime.currentPlaybackPositionMs + "\ntotalLoadTimeMs=" + totalLoadTimeMs + "\ntotalBytesLoaded=" + totalBytesLoaded + "\nbitrateEstimate" + bitrateEstimate);
             }
 
             @Override
             public void onSurfaceSizeChanged(EventTime eventTime, int width, int height) {
-                Log.d("BackgroundAudioPlayer",
+                Log.v(TAG,
                         "onSurfaceSizeChanged:\neventTime=" + eventTime.currentPlaybackPositionMs);
             }
 
             @Override
             public void onMetadata(EventTime eventTime, Metadata metadata) {
-                Log.d("BackgroundAudioPlayer",
+                Log.v(TAG,
                         "onMetadata:\neventTime=" + eventTime.currentPlaybackPositionMs);
             }
 
             @Override
             public void onDecoderEnabled(EventTime eventTime, int trackType,
                                          DecoderCounters decoderCounters) {
-                Log.d("BackgroundAudioPlayer",
+                Log.v(TAG,
                         "onDecoderEnabled:\neventTime=" + eventTime.currentPlaybackPositionMs);
             }
 
             @Override
             public void onDecoderInitialized(EventTime eventTime, int trackType,
                                              String decoderName, long initializationDurationMs) {
-                Log.d("BackgroundAudioPlayer",
+                Log.v(TAG,
                         "onDecoderInitialized:\neventTime=" + eventTime.currentPlaybackPositionMs);
             }
 
             @Override
             public void onDecoderInputFormatChanged(EventTime eventTime, int trackType,
                                                     Format format) {
-                Log.d("BackgroundAudioPlayer",
+                Log.v(TAG,
                         "onDecoderInputFormatChanged:\neventTime=" + eventTime.currentPlaybackPositionMs);
             }
 
             @Override
             public void onDecoderDisabled(EventTime eventTime, int trackType,
                                           DecoderCounters decoderCounters) {
-                Log.d("BackgroundAudioPlayer",
+                Log.v(TAG,
                         "onDecoderDisabled:\neventTime=" + eventTime.currentPlaybackPositionMs);
             }
 
             @Override
             public void onAudioSessionId(EventTime eventTime, int audioSessionId) {
                 ref.handleAudioSessionIdChange(backgroundAudioPlayer, audioSessionId);
-                Log.d("BackgroundAudioPlayer",
+                Log.v(TAG,
                         "onAudioSessionId:\neventTime=" + eventTime.currentPlaybackPositionMs +
                                 "\naudioSessionId=" + audioSessionId);
 
@@ -618,7 +657,7 @@ public class BackgroundAudioPlayer implements AudioPlayer {
             @Override
             public void onAudioAttributesChanged(EventTime eventTime,
                                                  AudioAttributes audioAttributes) {
-                Log.d("BackgroundAudioPlayer",
+                Log.v(TAG,
                         "onAudioAttributesChanged:\neventTime=" + eventTime.currentPlaybackPositionMs + "\naudioAttributes:" + "\n     contentType=" + audioAttributes.contentType);
             }
 
@@ -646,7 +685,7 @@ public class BackgroundAudioPlayer implements AudioPlayer {
 
             @Override
             public void onRenderedFirstFrame(EventTime eventTime, @Nullable Surface surface) {
-                Log.d("BackgroundAudioPlayer", "onRenderedFirstFrame:\neventTime=" + eventTime.currentPlaybackPositionMs);
+                Log.v(TAG, "onRenderedFirstFrame:\neventTime=" + eventTime.currentPlaybackPositionMs);
             }
         });
     }

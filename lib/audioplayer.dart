@@ -1,6 +1,7 @@
 import 'dart:async';
-import 'package:flutter_exoplayer/audio_notification.dart';
+
 import 'package:flutter/services.dart';
+import 'package:flutter_exoplayer/audio_notification.dart';
 import 'package:uuid/uuid.dart';
 
 enum PlayerState {
@@ -53,7 +54,7 @@ class AudioPlayer {
     NotificationDefaultActions.ALL: 3,
   };
 
-    static const NotificationCustomActionsMap = {
+  static const NotificationCustomActionsMap = {
     NotificationCustomActions.DISABLED: 0,
     NotificationCustomActions.ONE: 1,
     NotificationCustomActions.TWO: 2,
@@ -80,26 +81,19 @@ class AudioPlayer {
 
   PlayerState get playerState => _playerState;
 
-  final StreamController<PlayerState> _playerStateController =
-      StreamController<PlayerState>.broadcast();
+  final StreamController<PlayerState> _playerStateController = StreamController<PlayerState>.broadcast();
 
-  final StreamController<Duration> _positionController =
-      StreamController<Duration>.broadcast();
+  final StreamController<Duration> _positionController = StreamController<Duration>.broadcast();
 
-  final StreamController<Duration> _durationController =
-      StreamController<Duration>.broadcast();
+  final StreamController<Duration> _durationController = StreamController<Duration>.broadcast();
 
-  final StreamController<void> _completionController =
-      StreamController<void>.broadcast();
+  final StreamController<void> _completionController = StreamController<void>.broadcast();
 
-  final StreamController<String> _errorController =
-      StreamController<String>.broadcast();
+  final StreamController<String> _errorController = StreamController<String>.broadcast();
 
-  final StreamController<int> _currentPlayingIndexController =
-      StreamController<int>.broadcast();
+  final StreamController<int> _currentPlayingIndexController = StreamController<int>.broadcast();
 
-  final StreamController<int> _audioSessionIdController =
-      StreamController<int>.broadcast();
+  final StreamController<int> _audioSessionIdController = StreamController<int>.broadcast();
 
   final StreamController<NotificationActionName> _notificationActionController =
       StreamController<NotificationActionName>.broadcast();
@@ -145,14 +139,12 @@ class AudioPlayer {
   ///
   /// Events are sent every time the user taps on one of the notification`s
   /// actions, if `NotificationActionCallbackMode.CUSTOM` is passed to `AudioNotification`.
-  Stream<NotificationActionName> get onNotificationActionCallback =>
-      _notificationActionController.stream;
+  Stream<NotificationActionName> get onNotificationActionCallback => _notificationActionController.stream;
 
   /// Stream of current playing index.
   ///
   /// Events are sent when current index of a player is being changed.
-  Stream<int> get onCurrentAudioIndexChanged =>
-      _currentPlayingIndexController.stream;
+  Stream<int> get onCurrentAudioIndexChanged => _currentPlayingIndexController.stream;
 
   PlayerState _audioPlayerState;
 
@@ -172,12 +164,15 @@ class AudioPlayer {
   /// [audioNotification] for providing the foreground notification.
   Future<Result> play(
     String url, {
+    List<String> fallbackUrls,
+    int maxAttemptsPerUrl = 2, // This is the number of times each url is tried before moving on to the next url on the fallback list
     bool repeatMode = false,
     bool respectAudioFocus = false,
     Duration position = const Duration(milliseconds: 0),
     PlayerMode playerMode = PlayerMode.BACKGROUND,
     AudioNotification audioNotification,
   }) async {
+    assert(maxAttemptsPerUrl>0);
     playerMode ??= PlayerMode.BACKGROUND;
     repeatMode ??= false;
     respectAudioFocus ??= false;
@@ -199,17 +194,24 @@ class AudioPlayer {
       largeIconUrl = audioNotification.largeIconUrl;
       isLocal = audioNotification.isLocal;
 
-      notificationDefaultActions =
-          NotificationDefaultActionsMap[audioNotification.notificationDefaultActions];
+      notificationDefaultActions = NotificationDefaultActionsMap[audioNotification.notificationDefaultActions];
       notificationCustomActions = NotificationCustomActionsMap[audioNotification.notificationCustomActions];
-      notificationActionCallbackMode = NotificationActionCallbackModeMap[
-          audioNotification.notificationActionCallbackMode];
+      notificationActionCallbackMode =
+          NotificationActionCallbackModeMap[audioNotification.notificationActionCallbackMode];
 
       isBackground = false;
     }
 
+    String fallbackUrlStr;
+
+    if (fallbackUrls != null && fallbackUrls.isNotEmpty) {
+      fallbackUrlStr = fallbackUrls.join(",");
+    }
+
     return ResultMap[await _invokeMethod('play', {
       'url': url,
+      'fallbackUrls': fallbackUrlStr,
+      'maxAttemptsPerUrl': maxAttemptsPerUrl,
       'repeatMode': repeatMode,
       'isBackground': isBackground,
       'respectAudioFocus': respectAudioFocus,
@@ -263,12 +265,11 @@ class AudioPlayer {
         largeIconUrls.add(audioNotification.largeIconUrl);
         isLocals.add(audioNotification.isLocal);
 
-        notificationDefaultActionsList
-            .add(NotificationDefaultActionsMap[audioNotification.notificationDefaultActions]);
+        notificationDefaultActionsList.add(NotificationDefaultActionsMap[audioNotification.notificationDefaultActions]);
         notificationCustomActionsList.add(NotificationCustomActionsMap[audioNotification.notificationCustomActions]);
 
-        notificationActionCallbackModes.add(NotificationActionCallbackModeMap[
-            audioNotification.notificationActionCallbackMode]);
+        notificationActionCallbackModes
+            .add(NotificationActionCallbackModeMap[audioNotification.notificationActionCallbackMode]);
       }
 
       isBackground = false;
@@ -336,8 +337,7 @@ class AudioPlayer {
 
   /// Moves the cursor to the desired position.
   Future<Result> seekPosition(Duration position) async {
-    return ResultMap[await _invokeMethod(
-        'seekPosition', {'position': position.inMilliseconds}) as int];
+    return ResultMap[await _invokeMethod('seekPosition', {'position': position.inMilliseconds}) as int];
   }
 
   /// Switches to the desired index in playlist.
@@ -350,8 +350,7 @@ class AudioPlayer {
   /// 0 is mute and 1 is the max volume. The values between 0 and 1 are linearly
   /// interpolated.
   Future<Result> setVolume(double volume) async {
-    return ResultMap[
-        await _invokeMethod('setVolume', {'volume': volume}) as int];
+    return ResultMap[await _invokeMethod('setVolume', {'volume': volume}) as int];
   }
 
   /// Get audio duration after setting url.
@@ -385,9 +384,7 @@ class AudioPlayer {
 
   // Sets the repeat mode.
   Future<Result> setRepeatMode(bool repeatMode) async {
-    return ResultMap[
-        await _invokeMethod('setRepeatMode', {'repeatMode': repeatMode})
-            as int];
+    return ResultMap[await _invokeMethod('setRepeatMode', {'repeatMode': repeatMode}) as int];
   }
 
   static Future<void> platformCallHandler(MethodCall call) async {
@@ -404,12 +401,9 @@ class AudioPlayer {
   ]) {
     arguments ??= const {};
 
-    final Map<String, dynamic> withPlayerId = Map.of(arguments)
-      ..['playerId'] = playerId;
+    final Map<String, dynamic> withPlayerId = Map.of(arguments)..['playerId'] = playerId;
 
-    return _channel
-        .invokeMethod(method, withPlayerId)
-        .then((result) => (result));
+    return _channel.invokeMethod(method, withPlayerId).then((result) => (result));
   }
 
   static Future<void> _doHandlePlatformCall(MethodCall call) async {
@@ -441,8 +435,7 @@ class AudioPlayer {
         player._audioSessionIdController.add(value);
         break;
       case 'audio.onNotificationActionCallback':
-        player._notificationActionController
-            .add(NotificationActionNameMap[value]);
+        player._notificationActionController.add(NotificationActionNameMap[value]);
         break;
       case 'audio.onError':
         player._playerState = PlayerState.RELEASED;
