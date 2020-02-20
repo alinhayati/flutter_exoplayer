@@ -88,7 +88,7 @@ public class AudioPlayerPlugin implements MethodCallHandler {
     public void onServiceDisconnected(ComponentName arg0) {}
   };
 
-    public static void registerWith(final Registrar registrar) {
+  public static void registerWith(final Registrar registrar) {
     final MethodChannel channel = new MethodChannel(registrar.messenger(), "danielr2001/audioplayer");
     final AudioPlayerPlugin plugin = new AudioPlayerPlugin(channel, registrar.activity());
     channel.setMethodCallHandler(plugin);
@@ -140,7 +140,6 @@ public class AudioPlayerPlugin implements MethodCallHandler {
           final boolean respectAudioFocus = call.argument("respectAudioFocus");
           final boolean isBackground = call.argument("isBackground");
           final ForegroundPlayParams foregroundPlayParams = isBackground? null : buildForegroundPlayParams(call);
-          Log.d(TAG, "handleMethodCall: ");
           try {
               this.audioObject = buildAudioObject(isBackground, url, foregroundPlayParams);
           } catch (Exception e) {
@@ -338,90 +337,90 @@ public class AudioPlayerPlugin implements MethodCallHandler {
     }
   }
 
-    private void setupFallbackUrls(MethodCall call) {
-        final String fallbackUrlsStr = call.argument("fallbackUrls");
-        this.maxAttemptsPerUrl = call.argument("maxAttemptsPerUrl");
-        fallbackUrlList.clear();
-        if(fallbackUrlsStr == null) return;
-        Log.d(TAG, "handleMethodCall: fallbackUrlsStr="+fallbackUrlsStr+"\n maxAttemptsPerUrl="+ maxAttemptsPerUrl);
-        try {
-            final String[] fallbackUrlSequence = fallbackUrlsStr.split(",");
-            if(fallbackUrlSequence.length>0) fallbackUrlList.addAll(Arrays.asList(fallbackUrlSequence));
-        } catch (Exception e) {
-            e.printStackTrace();
-        }
+  private void setupFallbackUrls(MethodCall call) {
+    final String fallbackUrlsStr = call.argument("fallbackUrls");
+    this.maxAttemptsPerUrl = call.argument("maxAttemptsPerUrl");
+    fallbackUrlList.clear();
+    if(fallbackUrlsStr == null) return;
+    Log.d(TAG, "handleMethodCall: fallbackUrlsStr="+fallbackUrlsStr+"\n maxAttemptsPerUrl="+ maxAttemptsPerUrl);
+    try {
+        final String[] fallbackUrlSequence = fallbackUrlsStr.split(",");
+        if(fallbackUrlSequence.length>0) fallbackUrlList.addAll(Arrays.asList(fallbackUrlSequence));
+    } catch (Exception e) {
+        e.printStackTrace();
     }
+  }
 
-    private AudioObject buildAudioObject(boolean isBackground, String url, ForegroundPlayParams foregroundPlayParams) throws Exception {
+  private AudioObject buildAudioObject(boolean isBackground, String url, ForegroundPlayParams foregroundPlayParams) throws Exception {
     if(isBackground) return new AudioObject(url);
     if(foregroundPlayParams == null) throw new Exception("Foreground params must not be null in foreground mode");
-      NotificationDefaultActions notificationDefaultActions;
-      NotificationActionCallbackMode notificationActionCallbackMode;
-      NotificationCustomActions notificationCustomActions;
-      switch(foregroundPlayParams.getNotificationDefaultActionsInt()){
-          case 0:
-              notificationDefaultActions = NotificationDefaultActions.NONE;
-              break;
-          case 1:
-              notificationDefaultActions = NotificationDefaultActions.NEXT;
-              break;
-          case 2:
-              notificationDefaultActions = NotificationDefaultActions.PREVIOUS;
-              break;
-          case 3:
-              notificationDefaultActions = NotificationDefaultActions.FORWARD;
-              break;
-          case 4:
-              notificationDefaultActions = NotificationDefaultActions.BACKWARD;
-              break;
-          default:
-              notificationDefaultActions = NotificationDefaultActions.ALL;
-      }
-      switch (foregroundPlayParams.getNotificationCustomActionsInt()){
-          case 1:
-              notificationCustomActions = NotificationCustomActions.ONE;
-              break;
-          case 2:
-              notificationCustomActions = NotificationCustomActions.TWO;
-              break;
-          default:
-              notificationCustomActions = NotificationCustomActions.DISABLED;
-      }
-      if (foregroundPlayParams.getNotificationActionCallbackModeInt() == 0) {
-          notificationActionCallbackMode = NotificationActionCallbackMode.DEFAULT;
-      } else {
-          notificationActionCallbackMode = NotificationActionCallbackMode.CUSTOM;
-      }
-      return new AudioObject(url, foregroundPlayParams.getSmallIconFileName(), foregroundPlayParams.getTitle(), foregroundPlayParams.getSubTitle(), foregroundPlayParams.getLargeIconUrl(), foregroundPlayParams.isLocal(), notificationDefaultActions, notificationActionCallbackMode, notificationCustomActions);
+    NotificationDefaultActions notificationDefaultActions;
+    NotificationActionCallbackMode notificationActionCallbackMode;
+    NotificationCustomActions notificationCustomActions;
+    switch(foregroundPlayParams.getNotificationDefaultActionsInt()){
+        case 0:
+            notificationDefaultActions = NotificationDefaultActions.NONE;
+            break;
+        case 1:
+            notificationDefaultActions = NotificationDefaultActions.NEXT;
+            break;
+        case 2:
+            notificationDefaultActions = NotificationDefaultActions.PREVIOUS;
+            break;
+        case 3:
+            notificationDefaultActions = NotificationDefaultActions.FORWARD;
+            break;
+        case 4:
+            notificationDefaultActions = NotificationDefaultActions.BACKWARD;
+            break;
+        default:
+            notificationDefaultActions = NotificationDefaultActions.ALL;
+    }
+    switch (foregroundPlayParams.getNotificationCustomActionsInt()){
+        case 1:
+            notificationCustomActions = NotificationCustomActions.ONE;
+            break;
+        case 2:
+            notificationCustomActions = NotificationCustomActions.TWO;
+            break;
+        default:
+            notificationCustomActions = NotificationCustomActions.DISABLED;
+    }
+    if (foregroundPlayParams.getNotificationActionCallbackModeInt() == 0) {
+        notificationActionCallbackMode = NotificationActionCallbackMode.DEFAULT;
+    } else {
+        notificationActionCallbackMode = NotificationActionCallbackMode.CUSTOM;
+    }
+    return new AudioObject(url, foregroundPlayParams.getSmallIconFileName(), foregroundPlayParams.getTitle(), foregroundPlayParams.getSubTitle(), foregroundPlayParams.getLargeIconUrl(), foregroundPlayParams.isLocal(), notificationDefaultActions, notificationActionCallbackMode, notificationCustomActions);
   }
 
   public void handleNotificationActionCallback(AudioPlayer audioplayer, NotificationActionName notificationActionName){
-      switch(notificationActionName){
-        case PREVIOUS:
-          channel.invokeMethod("audio.onNotificationActionCallback",buildArguments(audioplayer.getPlayerId(), 0));
-          break;
-        case NEXT:
-          channel.invokeMethod("audio.onNotificationActionCallback",buildArguments(audioplayer.getPlayerId(), 1));
-          break;
-        case PLAY:
-          channel.invokeMethod("audio.onNotificationActionCallback",buildArguments(audioplayer.getPlayerId(), 2));
-          break;
-        case PAUSE:
-          channel.invokeMethod("audio.onNotificationActionCallback",buildArguments(audioplayer.getPlayerId(), 3));
-          break;
-        case CUSTOM1:
-          channel.invokeMethod("audio.onNotificationActionCallback",buildArguments(audioplayer.getPlayerId(), 4));
-          break;
-        case CUSTOM2:
-          channel.invokeMethod("audio.onNotificationActionCallback",buildArguments(audioplayer.getPlayerId(), 5));
-          break;
-        case FORWARD:
-          channel.invokeMethod("audio.onNotificationActionCallback",buildArguments(audioplayer.getPlayerId(), 6));
-          break;
-        case BACKWARD:
-          channel.invokeMethod("audio.onNotificationActionCallback",buildArguments(audioplayer.getPlayerId(), 7));
-          break;
-      }
+    switch(notificationActionName){
+      case PREVIOUS:
+        channel.invokeMethod("audio.onNotificationActionCallback",buildArguments(audioplayer.getPlayerId(), 0));
+        break;
+      case NEXT:
+        channel.invokeMethod("audio.onNotificationActionCallback",buildArguments(audioplayer.getPlayerId(), 1));
+        break;
+      case PLAY:
+        channel.invokeMethod("audio.onNotificationActionCallback",buildArguments(audioplayer.getPlayerId(), 2));
+        break;
+      case PAUSE:
+        channel.invokeMethod("audio.onNotificationActionCallback",buildArguments(audioplayer.getPlayerId(), 3));
+        break;
+      case CUSTOM1:
+        channel.invokeMethod("audio.onNotificationActionCallback",buildArguments(audioplayer.getPlayerId(), 4));
+        break;
+      case CUSTOM2:
+        channel.invokeMethod("audio.onNotificationActionCallback",buildArguments(audioplayer.getPlayerId(), 5));
+        break;
+      case FORWARD:
+        channel.invokeMethod("audio.onNotificationActionCallback",buildArguments(audioplayer.getPlayerId(), 6));
+        break;
+      case BACKWARD:
+        channel.invokeMethod("audio.onNotificationActionCallback",buildArguments(audioplayer.getPlayerId(), 7));
+        break;
+    }
   }
 
   public void handleAudioSessionIdChange(AudioPlayer audioplayer, int audioSessionId){
