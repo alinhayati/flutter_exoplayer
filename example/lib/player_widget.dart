@@ -311,7 +311,7 @@ class _PlayerWidgetState extends State<PlayerWidget> {
       final Result result = await _audioPlayer.play(
         url,
         fallbackUrls: fallbackList,
-        maxAttemptsPerUrl: 4,
+        maxAttemptsPerUrl: 2,
         repeatMode: true,
         respectAudioFocus: false,
         playerMode: PlayerMode.BACKGROUND,

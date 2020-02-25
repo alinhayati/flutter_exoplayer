@@ -18,7 +18,6 @@ import android.support.v4.media.MediaDescriptionCompat;
 import android.support.v4.media.MediaMetadataCompat;
 import android.support.v4.media.session.MediaSessionCompat;
 import android.util.Log;
-import android.view.Surface;
 import android.webkit.URLUtil;
 
 import androidx.annotation.Nullable;
@@ -26,26 +25,19 @@ import androidx.core.app.NotificationCompat;
 
 import com.google.android.exoplayer2.C;
 import com.google.android.exoplayer2.DefaultLoadControl;
-import com.google.android.exoplayer2.ExoPlaybackException;
 import com.google.android.exoplayer2.ExoPlayerFactory;
-import com.google.android.exoplayer2.Format;
-import com.google.android.exoplayer2.PlaybackParameters;
 import com.google.android.exoplayer2.Player;
 import com.google.android.exoplayer2.SimpleExoPlayer;
 import com.google.android.exoplayer2.analytics.AnalyticsListener;
 import com.google.android.exoplayer2.audio.AudioAttributes;
 import com.google.android.exoplayer2.database.ExoDatabaseProvider;
-import com.google.android.exoplayer2.decoder.DecoderCounters;
 import com.google.android.exoplayer2.ext.mediasession.MediaSessionConnector;
 import com.google.android.exoplayer2.ext.mediasession.TimelineQueueNavigator;
-import com.google.android.exoplayer2.metadata.Metadata;
 import com.google.android.exoplayer2.source.ConcatenatingMediaSource;
 import com.google.android.exoplayer2.source.MediaSource;
 import com.google.android.exoplayer2.source.MediaSourceEventListener;
 import com.google.android.exoplayer2.source.ProgressiveMediaSource;
-import com.google.android.exoplayer2.source.TrackGroupArray;
 import com.google.android.exoplayer2.trackselection.DefaultTrackSelector;
-import com.google.android.exoplayer2.trackselection.TrackSelectionArray;
 import com.google.android.exoplayer2.ui.PlayerNotificationManager;
 import com.google.android.exoplayer2.upstream.DataSource;
 import com.google.android.exoplayer2.upstream.DefaultAllocator;
@@ -56,23 +48,29 @@ import com.google.android.exoplayer2.upstream.cache.SimpleCache;
 import com.google.android.exoplayer2.util.Util;
 
 import java.io.File;
-import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 
 import danielr2001.audioplayer.AudioPlayerPlugin;
 import danielr2001.audioplayer.R;
-
 import danielr2001.audioplayer.enums.NotificationDefaultActions;
 import danielr2001.audioplayer.enums.PlayerMode;
 import danielr2001.audioplayer.enums.PlayerState;
 import danielr2001.audioplayer.interfaces.AudioPlayer;
+import danielr2001.audioplayer.listeners.EventListenerCallback;
+import danielr2001.audioplayer.listeners.ForegroundEventListener;
+import danielr2001.audioplayer.listeners.ForegroundPlayerAnalyticsListener;
 import danielr2001.audioplayer.models.AudioObject;
 import danielr2001.audioplayer.notifications.DescriptionAdapter;
 
 public class ForegroundAudioPlayer extends Service implements AudioPlayer {
+    public static final int NOTIFICATION_ID = 1;
+    public static final String CHANNEL_ID = "Playback";
     private static final String TAG = "ForegroundAudioPlayer";
     private final IBinder binder = new LocalBinder();
+    PlayerNotificationManager playerNotificationManager;
+    Activity activity;
+    MediaSessionConnector mediaSessionConnector;
     private ForegroundAudioPlayer foregroundAudioPlayer;
     private Context context;
     private AudioPlayerPlugin ref;
@@ -95,11 +93,6 @@ public class ForegroundAudioPlayer extends Service implements AudioPlayer {
     private ArrayList<AudioObject> audioObjects;
     private AudioObject audioObject;
     private Cache cache;
-    PlayerNotificationManager playerNotificationManager;
-    Activity activity;
-    public static final int NOTIFICATION_ID = 1;
-    public static final String CHANNEL_ID = "Playback";
-    MediaSessionConnector mediaSessionConnector;
     private List<String> fallbackUrlList;
     private int currentFallbackUrlIndex = -1;
     private int maxAttemptsPerUrl = DEFAULT_MAX_ATTEMPTS_PER_URL;
@@ -126,7 +119,7 @@ public class ForegroundAudioPlayer extends Service implements AudioPlayer {
         // mediaSession.setCallback(mediaSessionCallback);
         if (intent != null && intent.getAction() != null) {
             return START_STICKY;
-        }else{
+        } else {
             return START_REDELIVER_INTENT;
         }
     }
@@ -166,7 +159,7 @@ public class ForegroundAudioPlayer extends Service implements AudioPlayer {
             serviceChannel.enableLights(false);
             serviceChannel.enableVibration(false);
             NotificationManager manager = getSystemService(NotificationManager.class);
-            if(manager != null) manager.createNotificationChannel(serviceChannel);
+            if (manager != null) manager.createNotificationChannel(serviceChannel);
         }
     }
 
@@ -197,13 +190,16 @@ public class ForegroundAudioPlayer extends Service implements AudioPlayer {
                     new LeastRecentlyUsedCacheEvictor(InsightExoPlayerConstants.DEFAULT_MEDIA_CACHE_SIZE),
                     new ExoDatabaseProvider(context));
         }
-        // This allows things like google assistant, android auto, tv, etc. work with the player (e.g. 'Ok google, pause')
+        // This allows things like google assistant, android auto, tv, etc. work with the player
+        // (e.g. 'Ok google, pause')
         mediaSessionConnector = new MediaSessionConnector(mediaSession);
         setNotificationBar();
         player = ExoPlayerFactory.newSimpleInstance(this.context, trackSelector, loadControl);
         player.setForegroundMode(true);
-        DataSource.Factory offlineDataSourceFactory = new DefaultDataSourceFactory(this, Util.getUserAgent(this.context, "exoPlayerLibrary"));
-        DataSource.Factory onlineDataSourceFactory = new InsightCacheDataSourceFactory(this.context, cache);
+        DataSource.Factory offlineDataSourceFactory = new DefaultDataSourceFactory(this,
+                Util.getUserAgent(this.context, "exoPlayerLibrary"));
+        DataSource.Factory onlineDataSourceFactory =
+                new InsightCacheDataSourceFactory(this.context, cache);
         // playlist/single audio load
         InsightLoadErrorPolicy insightCustomLoadErrorPolicy = new InsightLoadErrorPolicy();
         if (this.playerMode == PlayerMode.PLAYLIST) {
@@ -264,7 +260,7 @@ public class ForegroundAudioPlayer extends Service implements AudioPlayer {
             this.released = false;
             this.audioObject = audioObject;
             this.fallbackUrlList = fallbackUrlList;
-            if(maxAttemptsPerUrl > 0) this.maxAttemptsPerUrl = maxAttemptsPerUrl;
+            if (maxAttemptsPerUrl > 0) this.maxAttemptsPerUrl = maxAttemptsPerUrl;
             this.attempts = 1;
             Log.d(TAG, "play: fallbackUrlList=" + fallbackUrlList);
             this.currentFallbackUrlIndex = -1;
@@ -460,76 +456,84 @@ public class ForegroundAudioPlayer extends Service implements AudioPlayer {
     }
 
     private void initEventListeners() {
-        addCustomListeners();
-        player.addListener(new Player.EventListener() {
-
-            @Override
-            public void onTracksChanged(TrackGroupArray trackGroups,
-                                        TrackSelectionArray trackSelections) { ref.handlePlayerIndex(foregroundAudioPlayer);
-            }
-
-            @Override
-            public void onPlayerStateChanged(boolean playWhenReady, int playbackState) {
-                switch (playbackState) {
-                    case Player.STATE_BUFFERING: {
-                        // buffering
-                        buffering = true;
-                        ref.handleStateChange(foregroundAudioPlayer, PlayerState.BUFFERING);
-                        break;
-                    }
-                    case Player.STATE_READY: {
-                        if (completed) {
-                            buffering = false;
-                            playerNotificationManager.setUseChronometer(false);
-                            playerNotificationManager.invalidate();
-                            ref.handleStateChange(foregroundAudioPlayer, PlayerState.COMPLETED);
-                        } else if (buffering) {
-                            // playing
-                            buffering = false;
-                            if (playWhenReady) {
-                                playing = true;
-                                ref.handleStateChange(foregroundAudioPlayer, PlayerState.PLAYING);
-                                ref.handlePositionUpdates();
-                            } else {
-                                ref.handleStateChange(foregroundAudioPlayer, PlayerState.PAUSED);
-                            }
-                        } else if (playWhenReady) {
-                            // resumed
-                            playing = true;
-                            ref.handleStateChange(foregroundAudioPlayer, PlayerState.PLAYING);
-                            ref.handlePositionUpdates();
-                            playerNotificationManager.invalidate();
-                        } else if (!playWhenReady) {
-                            // paused
-                            playing = false;
-                            ref.handleStateChange(foregroundAudioPlayer, PlayerState.PAUSED);
-                        }
-
-                        break;
-                    }
-                    case Player.STATE_ENDED: {
-                        // completed
-                        playing = false;
-                        completed = true;
-
-                        stopForeground(false);
-                        player.setPlayWhenReady(false);
-                        player.seekTo(0, 0);
-                        break;
-                    }
-                    case Player.STATE_IDLE: {
-                        buffering = true;
-                        playing = false;
-                        stopped = false;
-                        completed = false;
-                        playerNotificationManager.setUseChronometer(false);
-                        ref.handleStateChange(foregroundAudioPlayer, PlayerState.BUFFERING);
-                        break;
-                    } // handle of released is in release method!
-                }
-            }
-        });
+        addAnalyticsListener();
+        addEventListener();
     }
+
+    private void addEventListener() {
+        player.addListener(new ForegroundEventListener(new EventListenerCallback() {
+            @Override
+            public void doOnTracksChanged() {
+                ref.handlePlayerIndex(foregroundAudioPlayer);
+            }
+
+            @Override
+            public void doOnPlayerStatusChanged(boolean playWhenReady, int playbackState) {
+                doOnPlayerStateChanged(playWhenReady, playbackState);
+            }
+        }));
+    }
+
+    private void doOnPlayerStateChanged(boolean playWhenReady, int playbackState) {
+        switch (playbackState) {
+            case Player.STATE_BUFFERING: {
+                // buffering
+                buffering = true;
+                ref.handleStateChange(foregroundAudioPlayer, PlayerState.BUFFERING);
+                break;
+            }
+            case Player.STATE_READY: {
+                if (completed) {
+                    buffering = false;
+                    playerNotificationManager.setUseChronometer(false);
+                    playerNotificationManager.invalidate();
+                    ref.handleStateChange(foregroundAudioPlayer, PlayerState.COMPLETED);
+                } else if (buffering) {
+                    // playing
+                    buffering = false;
+                    if (playWhenReady) {
+                        playing = true;
+                        ref.handleStateChange(foregroundAudioPlayer, PlayerState.PLAYING);
+                        ref.handlePositionUpdates();
+                    } else {
+                        ref.handleStateChange(foregroundAudioPlayer, PlayerState.PAUSED);
+                    }
+                } else if (playWhenReady) {
+                    // resumed
+                    playing = true;
+                    ref.handleStateChange(foregroundAudioPlayer, PlayerState.PLAYING);
+                    ref.handlePositionUpdates();
+                    playerNotificationManager.invalidate();
+                } else if (!playWhenReady) {
+                    // paused
+                    playing = false;
+                    ref.handleStateChange(foregroundAudioPlayer, PlayerState.PAUSED);
+                }
+
+                break;
+            }
+            case Player.STATE_ENDED: {
+                // completed
+                playing = false;
+                completed = true;
+
+                stopForeground(false);
+                player.setPlayWhenReady(false);
+                player.seekTo(0, 0);
+                break;
+            }
+            case Player.STATE_IDLE: {
+                buffering = true;
+                playing = false;
+                stopped = false;
+                completed = false;
+                playerNotificationManager.setUseChronometer(false);
+                ref.handleStateChange(foregroundAudioPlayer, PlayerState.BUFFERING);
+                break;
+            } // handle of released is in release method!
+        }
+    }
+
 
     private void initialiseAndPlay() {
         this.initExoPlayer(0);
@@ -537,287 +541,76 @@ public class ForegroundAudioPlayer extends Service implements AudioPlayer {
         player.setPlayWhenReady(true);
     }
 
-    private void playFallbackAudioUrl() {
-        String fallbackUrl = getFallbackUrl();
-        if(fallbackUrl == null) return;
-        audioObject.setUrl(fallbackUrl);
-        initialiseAndPlay();
+    private void initialiseAndPlayAndSeek(long failTime) {
+        this.initExoPlayer(0);
+        initEventListeners();
+        player.seekTo(failTime);
+        player.setPlayWhenReady(true);
     }
 
-    private String getFallbackUrl(){
-        if(fallbackUrlList == null || fallbackUrlList.isEmpty() || currentFallbackUrlIndex++>(fallbackUrlList.size()-1)) return null;
+    private void playFallbackAudioUrl(long failTime) {
+        String fallbackUrl = getFallbackUrl();
+        if (fallbackUrl == null) return;
+        audioObject.setUrl(fallbackUrl);
+        if (failTime == 0) {
+            initialiseAndPlay();
+        } else {
+            initialiseAndPlayAndSeek(failTime);
+        }
+    }
+
+    private String getFallbackUrl() {
+        if (fallbackUrlList == null || fallbackUrlList.isEmpty() || currentFallbackUrlIndex++ > (fallbackUrlList.size() - 1))
+            return null;
         return fallbackUrlList.get(currentFallbackUrlIndex);
     }
 
-    private void addCustomListeners() {
-        player.addAnalyticsListener(new AnalyticsListener() {
+    private void addAnalyticsListener() {
+        player.addAnalyticsListener(new ForegroundPlayerAnalyticsListener(new ForegroundPlayerAnalyticsListener.AnalyticsCallback() {
             @Override
-            public void onPlayerStateChanged(EventTime eventTime, boolean playWhenReady,
-                                             int playbackState) {
-                Log.v(TAG,
-                        "onPlayerStateChanged:\neventTime=" + eventTime.currentPlaybackPositionMs + "\nplayWhenReady=" + playWhenReady + " \nplaybackState=" + playbackState);
-            }
-
-            @Override
-            public void onTimelineChanged(EventTime eventTime, int reason) {
-                Log.v(TAG,
-                        "onTimelineChanged:\neventTime=" + eventTime.currentPlaybackPositionMs +
-                                "\nreason=" + reason);
-            }
-
-            @Override
-            public void onPositionDiscontinuity(EventTime eventTime, int reason) {
-                Log.v(TAG,
-                        "onPositionDiscontinuity:\neventTime=" + eventTime.currentPlaybackPositionMs + "\nreason=" + reason);
-            }
-
-            @Override
-            public void onSeekStarted(EventTime eventTime) {
-                Log.v(TAG,
-                        "onSeekStarted:\neventTime=" + eventTime.currentPlaybackPositionMs);
-            }
-
-            @Override
-            public void onSeekProcessed(EventTime eventTime) {
-                Log.v(TAG,
-                        "onSeekProcessed:\neventTime=" + eventTime.currentPlaybackPositionMs);
-            }
-
-            @Override
-            public void onPlaybackParametersChanged(EventTime eventTime,
-                                                    PlaybackParameters playbackParameters) {
-                Log.v(TAG,
-                        "onPlaybackParametersChanged:\neventTime=" + eventTime.currentPlaybackPositionMs + " PlaybackParameters:" + "\n    pitch=" + playbackParameters.pitch + "\n    skipSilence=" + playbackParameters.skipSilence + "\n     speed=" + playbackParameters.speed);
-            }
-
-            @Override
-            public void onRepeatModeChanged(EventTime eventTime, int repeatMode) {
-                Log.v(TAG,
-                        "onRepeatModeChanged:\neventTime=" + eventTime.currentPlaybackPositionMs + "\nrepeatMode=" + repeatMode);
-            }
-
-            @Override
-            public void onShuffleModeChanged(EventTime eventTime, boolean shuffleModeEnabled) {
-                Log.v(TAG,
-                        "onShuffleModeChanged:\neventTime=" + eventTime.currentPlaybackPositionMs + "\nrepeatMode=" + shuffleModeEnabled);
-            }
-
-            @Override
-            public void onLoadingChanged(EventTime eventTime, boolean isLoading) {
-                Log.v(TAG,
-                        "onLoadingChanged:\neventTime=" + eventTime.currentPlaybackPositionMs +
-                                "\nrepeatMode=" + isLoading);
-            }
-
-            @Override
-            public void onPlayerError(EventTime eventTime, ExoPlaybackException error) {
-                Log.v(TAG,
-                        "onPlayerError:\neventTime=" + eventTime.currentPlaybackPositionMs +
-                                "\nerror=" + error.getMessage());
-            }
-
-            @Override
-            public void onTracksChanged(EventTime eventTime, TrackGroupArray trackGroups,
-                                        TrackSelectionArray trackSelections) {
-                Log.v(TAG, "onTracksChanged");
-            }
-
-            @Override
-            public void onLoadStarted(EventTime eventTime,
-                                      MediaSourceEventListener.LoadEventInfo loadEventInfo,
-                                      MediaSourceEventListener.MediaLoadData mediaLoadData) {
-                Log.v(TAG,
-                        "onLoadStarted:\neventTime=" + eventTime.currentPlaybackPositionMs +
-                                "\nloadEventInfo:" + "\n  bytes loaded:" + loadEventInfo.bytesLoaded + "\n    dataSpec:" + "\n       key=" + loadEventInfo.dataSpec.key + "\n       absoluteStreamPosition=" + loadEventInfo.dataSpec.absoluteStreamPosition + "\n       flags=" + loadEventInfo.dataSpec.flags + "\n       uri=" + loadEventInfo.dataSpec.uri + "\n       httpMethodString=" + loadEventInfo.dataSpec.getHttpMethodString() + "\n    elapsedRealtimeMs:" + loadEventInfo.elapsedRealtimeMs + "\n    loadDurationMs:" + loadEventInfo.loadDurationMs + "\n    entrySet:" + loadEventInfo.responseHeaders.entrySet() + "\nMediaLoadData:" + "\n    dataType=" + mediaLoadData.dataType + "\n    mediaEndTimeMs=" + mediaLoadData.mediaEndTimeMs + "\n    mediaStartTimeMs=" + mediaLoadData.mediaStartTimeMs + "\n    trackSelectionReason=" + mediaLoadData.trackSelectionReason + "\n    trackType=" + mediaLoadData.trackType);
-            }
-
-            @Override
-            public void onLoadCompleted(EventTime eventTime,
-                                        MediaSourceEventListener.LoadEventInfo loadEventInfo,
-                                        MediaSourceEventListener.MediaLoadData mediaLoadData) {
-                Log.v(TAG,
-                        "onLoadCompleted:\neventTime=" + eventTime.currentPlaybackPositionMs +
-                                "\nloadEventInfo:" + "\n  bytes loaded:" + loadEventInfo.bytesLoaded + "\n    dataSpec:" + "\n       key=" + loadEventInfo.dataSpec.key + "\n       absoluteStreamPosition=" + loadEventInfo.dataSpec.absoluteStreamPosition + "\n       flags=" + loadEventInfo.dataSpec.flags + "\n       uri=" + loadEventInfo.dataSpec.uri + "\n       httpMethodString=" + loadEventInfo.dataSpec.getHttpMethodString() + "\n    elapsedRealtimeMs:" + loadEventInfo.elapsedRealtimeMs + "\n    loadDurationMs:" + loadEventInfo.loadDurationMs + "\n    entrySet:" + loadEventInfo.responseHeaders.entrySet() + "\nMediaLoadData:" + "\n    dataType=" + mediaLoadData.dataType + "\n    mediaEndTimeMs=" + mediaLoadData.mediaEndTimeMs + "\n    mediaStartTimeMs=" + mediaLoadData.mediaStartTimeMs + "\n    trackSelectionReason=" + mediaLoadData.trackSelectionReason + "\n    trackType=" + mediaLoadData.trackType);
-            }
-
-            @Override
-            public void onLoadCanceled(EventTime eventTime,
-                                       MediaSourceEventListener.LoadEventInfo loadEventInfo,
-                                       MediaSourceEventListener.MediaLoadData mediaLoadData) {
-                Log.v(TAG,
-                        "onLoadCanceled:\neventTime=" + eventTime.currentPlaybackPositionMs +
-                                "\nloadEventInfo:" + "\n  bytes loaded:" + loadEventInfo.bytesLoaded + "\n    dataSpec:" + "\n       key=" + loadEventInfo.dataSpec.key + "\n       absoluteStreamPosition=" + loadEventInfo.dataSpec.absoluteStreamPosition + "\n       flags=" + loadEventInfo.dataSpec.flags + "\n       uri=" + loadEventInfo.dataSpec.uri + "\n       httpMethodString=" + loadEventInfo.dataSpec.getHttpMethodString() + "\n    elapsedRealtimeMs:" + loadEventInfo.elapsedRealtimeMs + "\n    loadDurationMs:" + loadEventInfo.loadDurationMs + "\n    entrySet:" + loadEventInfo.responseHeaders.entrySet() + "\nMediaLoadData:" + "\n    dataType=" + mediaLoadData.dataType + "\n    mediaEndTimeMs=" + mediaLoadData.mediaEndTimeMs + "\n    mediaStartTimeMs=" + mediaLoadData.mediaStartTimeMs + "\n    trackSelectionReason=" + mediaLoadData.trackSelectionReason + "\n    trackType=" + mediaLoadData.trackType);
-            }
-
-            @Override
-            public void onLoadError(EventTime eventTime,
-                                    MediaSourceEventListener.LoadEventInfo loadEventInfo,
-                                    MediaSourceEventListener.MediaLoadData mediaLoadData,
-                                    IOException error, boolean wasCanceled) {
-                Log.v(TAG,
-                        "onLoadError:\neventTime=" + eventTime.currentPlaybackPositionMs +
-                                "\nloadEventInfo:" + "\n  bytes loaded:" + loadEventInfo.bytesLoaded + "\n    dataSpec:" + "\n       key=" + loadEventInfo.dataSpec.key + "\n       absoluteStreamPosition=" + loadEventInfo.dataSpec.absoluteStreamPosition + "\n       flags=" + loadEventInfo.dataSpec.flags + "\n       uri=" + loadEventInfo.dataSpec.uri + "\n       httpMethodString=" + loadEventInfo.dataSpec.getHttpMethodString() + "\n    elapsedRealtimeMs:" + loadEventInfo.elapsedRealtimeMs + "\n    loadDurationMs:" + loadEventInfo.loadDurationMs + "\n    entrySet:" + loadEventInfo.responseHeaders.entrySet() + "\nMediaLoadData:" + "\n    dataType=" + mediaLoadData.dataType + "\n    mediaEndTimeMs=" + mediaLoadData.mediaEndTimeMs + "\n    mediaStartTimeMs=" + mediaLoadData.mediaStartTimeMs + "\n    trackSelectionReason=" + mediaLoadData.trackSelectionReason + "\n    trackType=" + mediaLoadData.trackType + "\n   error=" + error.getMessage() + "\n  wasCanceled=" + wasCanceled);
-                if(attempts<= maxAttemptsPerUrl) {
-                    Log.d(TAG, "Attempt" + attempts + ": "+loadEventInfo.dataSpec.uri);
+            public void doOnLoadError(AnalyticsListener.EventTime eventTime,
+                                      MediaSourceEventListener.LoadEventInfo loadEventInfo) {
+                if (attempts <= maxAttemptsPerUrl) {
+                    Log.d(TAG, "Attempt" + attempts + ": " + loadEventInfo.dataSpec.uri);
                     attempts++;
                     return;
                 }
                 attempts = 1;
                 stop();
-                playFallbackAudioUrl();
+                playFallbackAudioUrl(eventTime.currentPlaybackPositionMs);
             }
 
             @Override
-            public void onDownstreamFormatChanged(EventTime eventTime,
-                                                  MediaSourceEventListener.MediaLoadData mediaLoadData) {
-                Log.v(TAG,
-                        "onDownstreamFormatChanged:\neventTime=" + eventTime.currentPlaybackPositionMs + "\nMediaLoadData:" + "\n    dataType=" + mediaLoadData.dataType + "\n    mediaEndTimeMs=" + mediaLoadData.mediaEndTimeMs + "\n    mediaStartTimeMs=" + mediaLoadData.mediaStartTimeMs + "\n    trackSelectionReason=" + mediaLoadData.trackSelectionReason + "\n    trackType=" + mediaLoadData.trackType);
-            }
-
-            @Override
-            public void onUpstreamDiscarded(EventTime eventTime,
-                                            MediaSourceEventListener.MediaLoadData mediaLoadData) {
-                Log.v(TAG,
-                        "onUpstreamDiscarded:\neventTime=" + eventTime.currentPlaybackPositionMs + "\nMediaLoadData:" + "\n    dataType=" + mediaLoadData.dataType + "\n    mediaEndTimeMs=" + mediaLoadData.mediaEndTimeMs + "\n    mediaStartTimeMs=" + mediaLoadData.mediaStartTimeMs + "\n    trackSelectionReason=" + mediaLoadData.trackSelectionReason + "\n    trackType=" + mediaLoadData.trackType);
-            }
-
-            @Override
-            public void onMediaPeriodCreated(EventTime eventTime) {
-                Log.v(TAG,
-                        "onMediaPeriodCreated:\neventTime=" + eventTime.currentPlaybackPositionMs);
-            }
-
-            @Override
-            public void onMediaPeriodReleased(EventTime eventTime) {
-                Log.v(TAG,
-                        "onMediaPeriodReleased:\neventTime=" + eventTime.currentPlaybackPositionMs);
-            }
-
-            @Override
-            public void onReadingStarted(EventTime eventTime) {
-                Log.v(TAG,
-                        "onReadingStarted:\neventTime=" + eventTime.currentPlaybackPositionMs);
-            }
-
-            @Override
-            public void onBandwidthEstimate(EventTime eventTime, int totalLoadTimeMs,
-                                            long totalBytesLoaded, long bitrateEstimate) {
-                Log.v(TAG,
-                        "onBandwidthEstimate:\neventTime=" + eventTime.currentPlaybackPositionMs + "\ntotalLoadTimeMs=" + totalLoadTimeMs + "\ntotalBytesLoaded=" + totalBytesLoaded + "\nbitrateEstimate" + bitrateEstimate);
-            }
-
-            @Override
-            public void onSurfaceSizeChanged(EventTime eventTime, int width, int height) {
-                Log.v(TAG,
-                        "onSurfaceSizeChanged:\neventTime=" + eventTime.currentPlaybackPositionMs);
-            }
-
-            @Override
-            public void onMetadata(EventTime eventTime, Metadata metadata) {
-                Log.v(TAG,
-                        "onMetadata:\neventTime=" + eventTime.currentPlaybackPositionMs);
-            }
-
-            @Override
-            public void onDecoderEnabled(EventTime eventTime, int trackType,
-                                         DecoderCounters decoderCounters) {
-                Log.v(TAG,
-                        "onDecoderEnabled:\neventTime=" + eventTime.currentPlaybackPositionMs);
-            }
-
-            @Override
-            public void onDecoderInitialized(EventTime eventTime, int trackType,
-                                             String decoderName, long initializationDurationMs) {
-                Log.v(TAG,
-                        "onDecoderInitialized:\neventTime=" + eventTime.currentPlaybackPositionMs);
-            }
-
-            @Override
-            public void onDecoderInputFormatChanged(EventTime eventTime, int trackType,
-                                                    Format format) {
-                Log.v(TAG,
-                        "onDecoderInputFormatChanged:\neventTime=" + eventTime.currentPlaybackPositionMs);
-            }
-
-            @Override
-            public void onDecoderDisabled(EventTime eventTime, int trackType,
-                                          DecoderCounters decoderCounters) {
-                Log.v(TAG,
-                        "onDecoderDisabled:\neventTime=" + eventTime.currentPlaybackPositionMs);
-            }
-
-            @Override
-            public void onAudioSessionId(EventTime eventTime, int audioSessionId) {
+            public void doOnAudioSessionId(int audioSessionId) {
                 ref.handleAudioSessionIdChange(foregroundAudioPlayer, audioSessionId);
-                Log.v(TAG,
-                        "onAudioSessionId:\neventTime=" + eventTime.currentPlaybackPositionMs +
-                                "\naudioSessionId=" + audioSessionId);
-
             }
-
-            @Override
-            public void onAudioAttributesChanged(EventTime eventTime,
-                                                 AudioAttributes audioAttributes) {
-                Log.v(TAG,
-                        "onAudioAttributesChanged:\neventTime=" + eventTime.currentPlaybackPositionMs + "\naudioAttributes:" + "\n     contentType=" + audioAttributes.contentType);
-            }
-
-            @Override
-            public void onVolumeChanged(EventTime eventTime, float volume) {
-
-            }
-
-            @Override
-            public void onAudioUnderrun(EventTime eventTime, int bufferSize, long bufferSizeMs,
-                                        long elapsedSinceLastFeedMs) {
-
-            }
-
-            @Override
-            public void onDroppedVideoFrames(EventTime eventTime, int droppedFrames,
-                                             long elapsedMs) {
-
-            }
-
-            @Override
-            public void onVideoSizeChanged(EventTime eventTime, int width, int height,
-                                           int unappliedRotationDegrees,
-                                           float pixelWidthHeightRatio) {
-
-            }
-
-            @Override
-            public void onRenderedFirstFrame(EventTime eventTime, @Nullable Surface surface) {
-                Log.v(TAG,
-                        "onRenderedFirstFrame:\neventTime=" + eventTime.currentPlaybackPositionMs);
-            }
-        });
-    }
-
-    public class LocalBinder extends Binder {
-        public ForegroundAudioPlayer getService() {
-            return ForegroundAudioPlayer.this;
-        }
+        }));
     }
 
     public void setNotificationBar() {
         playerNotificationManager = PlayerNotificationManager.createWithNotificationChannel(
-                context, CHANNEL_ID, R.string.notification_channel_name, NOTIFICATION_ID, new DescriptionAdapter(audioObject, activity), new PlayerNotificationManager.NotificationListener() {
+                context, CHANNEL_ID, R.string.notification_channel_name, NOTIFICATION_ID,
+                new DescriptionAdapter(audioObject, activity),
+                new PlayerNotificationManager.NotificationListener() {
                     @Override
-                    public void onNotificationCancelled(int notificationId, boolean dismissedByUser) {
+                    public void onNotificationCancelled(int notificationId,
+                                                        boolean dismissedByUser) {
                         stopSelf();
                     }
 
                     @Override
-                    public void onNotificationPosted(int notificationId, Notification notification, boolean ongoing) {
+                    public void onNotificationPosted(int notificationId,
+                                                     Notification notification, boolean ongoing) {
                         startForeground(notificationId, notification);
                     }
                 });
 
         playerNotificationManager.setPriority(NotificationCompat.PRIORITY_HIGH);
         playerNotificationManager.setMediaSessionToken(mediaSession.getSessionToken());
-        if(audioObject != null && audioObject.getSmallIconFileName() != null) {
-            int icon = this.context.getResources().getIdentifier(audioObject.getSmallIconFileName(), "drawable",
+        if (audioObject != null && audioObject.getSmallIconFileName() != null) {
+            int icon =
+                    this.context.getResources().getIdentifier(audioObject.getSmallIconFileName(),
+                            "drawable",
                     this.context.getPackageName());
             playerNotificationManager.setSmallIcon(icon);
         }
@@ -828,7 +621,7 @@ public class ForegroundAudioPlayer extends Service implements AudioPlayer {
         playerNotificationManager.setFastForwardIncrementMs(0);
         playerNotificationManager.setRewindIncrementMs(0);
 
-        if(audioObject != null && audioObject.getNotificationActionMode() != null) {
+        if (audioObject != null && audioObject.getNotificationActionMode() != null) {
             if (audioObject.getNotificationActionMode() == NotificationDefaultActions.FORWARD ||
                     audioObject.getNotificationActionMode() == NotificationDefaultActions.BACKWARD ||
                     audioObject.getNotificationActionMode() == NotificationDefaultActions.ALL) {
@@ -837,7 +630,8 @@ public class ForegroundAudioPlayer extends Service implements AudioPlayer {
             } else {
                 mediaSessionConnector.setQueueNavigator(new TimelineQueueNavigator(mediaSession) {
                     @Override
-                    public MediaDescriptionCompat getMediaDescription(Player player, int windowIndex) {
+                    public MediaDescriptionCompat getMediaDescription(Player player,
+                                                                      int windowIndex) {
                         Bundle extras = new Bundle();
                         extras.putInt(MediaMetadataCompat.METADATA_KEY_DURATION, -1);
 
@@ -848,6 +642,12 @@ public class ForegroundAudioPlayer extends Service implements AudioPlayer {
                     }
                 });
             }
+        }
+    }
+
+    public class LocalBinder extends Binder {
+        public ForegroundAudioPlayer getService() {
+            return ForegroundAudioPlayer.this;
         }
     }
 }
