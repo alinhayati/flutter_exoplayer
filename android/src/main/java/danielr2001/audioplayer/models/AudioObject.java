@@ -6,12 +6,15 @@ import danielr2001.audioplayer.enums.NotificationActionCallbackMode;
 
 import android.graphics.Bitmap;
 
+import java.util.ArrayList;
+import java.util.List;
+
 public class AudioObject {
     private String url;
     private String smallIconFileName;
     private String title;
     private String subTitle;
-
+    private List<String> fallbackUrlList = new ArrayList<>();
     private String largeIconUrl;
     private boolean isLocal;
     private NotificationDefaultActions notificationDefaultActions;
@@ -85,5 +88,13 @@ public class AudioObject {
 
     public void setUrl(String url) {
         this.url = url;
+    }
+
+    public List<String> getFallbackUrlList() {
+        return fallbackUrlList;
+    }
+
+    public void setFallbackUrlList(List<String> fallbackUrlList) {
+        this.fallbackUrlList = fallbackUrlList;
     }
 }

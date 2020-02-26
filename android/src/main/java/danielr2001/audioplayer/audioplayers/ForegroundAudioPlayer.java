@@ -93,7 +93,6 @@ public class ForegroundAudioPlayer extends Service implements AudioPlayer {
     private ArrayList<AudioObject> audioObjects;
     private AudioObject audioObject;
     private Cache cache;
-    private List<String> fallbackUrlList;
     private int currentFallbackUrlIndex = -1;
     private int maxAttemptsPerUrl = DEFAULT_MAX_ATTEMPTS_PER_URL;
     private int attempts = 1;
@@ -253,16 +252,16 @@ public class ForegroundAudioPlayer extends Service implements AudioPlayer {
     }
 
     @Override
-    public void play(AudioObject audioObject, List<String> fallbackUrlList, int maxAttemptsPerUrl) {
+    public void play(AudioObject audioObject, int maxAttemptsPerUrl) {
         if (this.completed) {
             this.resume();
         } else {
             this.released = false;
             this.audioObject = audioObject;
-            this.fallbackUrlList = fallbackUrlList;
             if (maxAttemptsPerUrl > 0) this.maxAttemptsPerUrl = maxAttemptsPerUrl;
             this.attempts = 1;
-            Log.d(TAG, "play: fallbackUrlList=" + fallbackUrlList);
+            if (audioObject != null)
+                Log.d(TAG, "play: fallbackUrlList=" + audioObject.getFallbackUrlList());
             this.currentFallbackUrlIndex = -1;
             initialiseAndPlay();
         }
@@ -341,7 +340,6 @@ public class ForegroundAudioPlayer extends Service implements AudioPlayer {
             this.cache.release();
             this.cache = null;
             this.audioObject = null;
-            this.fallbackUrlList = null;
             this.maxAttemptsPerUrl = DEFAULT_MAX_ATTEMPTS_PER_URL;
             this.attempts = 1;
             this.currentFallbackUrlIndex = -1;
@@ -560,9 +558,12 @@ public class ForegroundAudioPlayer extends Service implements AudioPlayer {
     }
 
     private String getFallbackUrl() {
-        if (fallbackUrlList == null || fallbackUrlList.isEmpty() || currentFallbackUrlIndex++ > (fallbackUrlList.size() - 1))
+        currentFallbackUrlIndex++;
+        List<String> fallbackUrls = audioObject.getFallbackUrlList();
+        if (fallbackUrls == null || fallbackUrls.isEmpty() || currentFallbackUrlIndex > (fallbackUrls.size() - 1)) {
             return null;
-        return fallbackUrlList.get(currentFallbackUrlIndex);
+        }
+        return fallbackUrls.get(currentFallbackUrlIndex);
     }
 
     private void addAnalyticsListener() {
@@ -611,7 +612,7 @@ public class ForegroundAudioPlayer extends Service implements AudioPlayer {
             int icon =
                     this.context.getResources().getIdentifier(audioObject.getSmallIconFileName(),
                             "drawable",
-                    this.context.getPackageName());
+                            this.context.getPackageName());
             playerNotificationManager.setSmallIcon(icon);
         }
         playerNotificationManager.setColorized(true);

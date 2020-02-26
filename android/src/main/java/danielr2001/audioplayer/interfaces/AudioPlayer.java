@@ -19,7 +19,7 @@ public interface AudioPlayer {
     void initExoPlayer(int index);
 
     //player contols
-    void play(AudioObject audioObject, List<String> fallbackUrlList, int maxUrlAttempts);
+    void play(AudioObject audioObject, int maxUrlAttempts);
 
     void playAll(ArrayList<AudioObject> audioObjects, int index); 
 
