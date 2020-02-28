@@ -353,6 +353,9 @@ public class ForegroundAudioPlayer extends Service implements AudioPlayer {
     @Override
     public void seekPosition(int position) {
         if (!this.released) {
+            if(position == 0 && playerNotificationManager != null) {
+                playerNotificationManager.setUseChronometer(true);
+            }
             player.seekTo(player.getCurrentWindowIndex(), position);
             player.setPlayWhenReady(true);
         }
