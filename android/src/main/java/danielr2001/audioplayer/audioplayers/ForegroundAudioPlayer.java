@@ -476,6 +476,7 @@ public class ForegroundAudioPlayer extends Service implements AudioPlayer {
                             playerNotificationManager.invalidate();
                             ref.handleStateChange(foregroundAudioPlayer, PlayerState.COMPLETED);
                         } else if (buffering) {
+                            playerNotificationManager.setUseChronometer(true);
                             // playing
                             buffering = false;
                             if (playWhenReady) {
@@ -488,6 +489,7 @@ public class ForegroundAudioPlayer extends Service implements AudioPlayer {
                                 hideFastForwardRewindButtons();
                             }
                         } else if (playWhenReady) {
+                            playerNotificationManager.setUseChronometer(true);
                             // resumed
                             playing = true;
                             ref.handleStateChange(foregroundAudioPlayer, PlayerState.PLAYING);
@@ -495,6 +497,7 @@ public class ForegroundAudioPlayer extends Service implements AudioPlayer {
                             showFastForwardRewindButtons();
                             playerNotificationManager.invalidate();
                         } else if (!playWhenReady) {
+                            playerNotificationManager.setUseChronometer(true);
                             // paused
                             playing = false;
                             ref.handleStateChange(foregroundAudioPlayer, PlayerState.PAUSED);
