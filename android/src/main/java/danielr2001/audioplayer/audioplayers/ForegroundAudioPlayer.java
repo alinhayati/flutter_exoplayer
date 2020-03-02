@@ -482,19 +482,23 @@ public class ForegroundAudioPlayer extends Service implements AudioPlayer {
                                 playing = true;
                                 ref.handleStateChange(foregroundAudioPlayer, PlayerState.PLAYING);
                                 ref.handlePositionUpdates();
+                                showFastForwardRewindButtons();
                             } else {
                                 ref.handleStateChange(foregroundAudioPlayer, PlayerState.PAUSED);
+                                hideFastForwardRewindButtons();
                             }
                         } else if (playWhenReady) {
                             // resumed
                             playing = true;
                             ref.handleStateChange(foregroundAudioPlayer, PlayerState.PLAYING);
                             ref.handlePositionUpdates();
+                            showFastForwardRewindButtons();
                             playerNotificationManager.invalidate();
                         } else if (!playWhenReady) {
                             // paused
                             playing = false;
                             ref.handleStateChange(foregroundAudioPlayer, PlayerState.PAUSED);
+                            hideFastForwardRewindButtons();
                         }
 
                         break;
@@ -817,5 +821,21 @@ public class ForegroundAudioPlayer extends Service implements AudioPlayer {
                 });
             }
         }
+    }
+
+    private void showFastForwardRewindButtons() {
+        if(audioObject != null && audioObject.getNotificationActionMode() != null) {
+            if (audioObject.getNotificationActionMode() == NotificationDefaultActions.FORWARD ||
+                    audioObject.getNotificationActionMode() == NotificationDefaultActions.BACKWARD ||
+                    audioObject.getNotificationActionMode() == NotificationDefaultActions.ALL) {
+                playerNotificationManager.setFastForwardIncrementMs(15000);
+                playerNotificationManager.setRewindIncrementMs(15000);
+            }
+        }
+    }
+
+    private void hideFastForwardRewindButtons() {
+        playerNotificationManager.setFastForwardIncrementMs(0);
+        playerNotificationManager.setRewindIncrementMs(0);
     }
 }
