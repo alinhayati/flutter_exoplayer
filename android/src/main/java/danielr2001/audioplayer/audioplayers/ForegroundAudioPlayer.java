@@ -833,6 +833,7 @@ public class ForegroundAudioPlayer extends Service implements AudioPlayer {
                     audioObject.getNotificationActionMode() == NotificationDefaultActions.ALL) {
                 playerNotificationManager.setFastForwardIncrementMs(15000);
                 playerNotificationManager.setRewindIncrementMs(15000);
+                mediaSessionConnector.setPlayer(player);
             }
         }
     }
@@ -840,5 +841,6 @@ public class ForegroundAudioPlayer extends Service implements AudioPlayer {
     private void hideFastForwardRewindButtons() {
         playerNotificationManager.setFastForwardIncrementMs(0);
         playerNotificationManager.setRewindIncrementMs(0);
+        mediaSessionConnector.setPlayer(null);
     }
 }
