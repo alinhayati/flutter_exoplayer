@@ -476,25 +476,32 @@ public class ForegroundAudioPlayer extends Service implements AudioPlayer {
                             playerNotificationManager.invalidate();
                             ref.handleStateChange(foregroundAudioPlayer, PlayerState.COMPLETED);
                         } else if (buffering) {
+                            playerNotificationManager.setUseChronometer(true);
                             // playing
                             buffering = false;
                             if (playWhenReady) {
                                 playing = true;
                                 ref.handleStateChange(foregroundAudioPlayer, PlayerState.PLAYING);
                                 ref.handlePositionUpdates();
+                                showFastForwardRewindButtons();
                             } else {
                                 ref.handleStateChange(foregroundAudioPlayer, PlayerState.PAUSED);
+                                hideFastForwardRewindButtons();
                             }
                         } else if (playWhenReady) {
+                            playerNotificationManager.setUseChronometer(true);
                             // resumed
                             playing = true;
                             ref.handleStateChange(foregroundAudioPlayer, PlayerState.PLAYING);
                             ref.handlePositionUpdates();
+                            showFastForwardRewindButtons();
                             playerNotificationManager.invalidate();
                         } else if (!playWhenReady) {
+                            playerNotificationManager.setUseChronometer(true);
                             // paused
                             playing = false;
                             ref.handleStateChange(foregroundAudioPlayer, PlayerState.PAUSED);
+                            hideFastForwardRewindButtons();
                         }
 
                         break;
@@ -817,5 +824,23 @@ public class ForegroundAudioPlayer extends Service implements AudioPlayer {
                 });
             }
         }
+    }
+
+    private void showFastForwardRewindButtons() {
+        if(audioObject != null && audioObject.getNotificationActionMode() != null) {
+            if (audioObject.getNotificationActionMode() == NotificationDefaultActions.FORWARD ||
+                    audioObject.getNotificationActionMode() == NotificationDefaultActions.BACKWARD ||
+                    audioObject.getNotificationActionMode() == NotificationDefaultActions.ALL) {
+                playerNotificationManager.setFastForwardIncrementMs(15000);
+                playerNotificationManager.setRewindIncrementMs(15000);
+                mediaSessionConnector.setPlayer(player);
+            }
+        }
+    }
+
+    private void hideFastForwardRewindButtons() {
+        playerNotificationManager.setFastForwardIncrementMs(0);
+        playerNotificationManager.setRewindIncrementMs(0);
+        mediaSessionConnector.setPlayer(null);
     }
 }
